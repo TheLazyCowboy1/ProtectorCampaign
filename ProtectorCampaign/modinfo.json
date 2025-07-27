@@ -1,0 +1,12 @@
+{
+  "id": "LazyCowboy.ProtectorCampaign",
+  "name": "ProtectorCampaign",
+  "version": "0.0.1",
+  "target_game_version": "v1.10",
+  "authors": "Benoit3607, TheLazyCowboy1",
+  "description": "A severely over-ambitious campaign that combines the age-old goal of delivering a slugpup to a safe home with the Watcher's time-travel/teleportation and Downpour's diverse timelines.",
+  "requirements": [ "slime-cubed.slugbase", "watcher", "moreslugcats" ],
+  "requirements_names": [ "SlugBase", "The Watcher", "More Slugcats Expansion" ],
+  "tags": ["Campaigns", "Custom Slugcat", "Game Mechanics", "Downpour", "Watcher"],
+  "checksum_override_version": false
+}

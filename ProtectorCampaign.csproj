@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>11</LangVersion>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<Reference Include="..\REFERENCES\*.dll" />
+	</ItemGroup>
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<ItemGroup>
+			<BuildFiles Include="$(Outdir)\ProtectorCampaign.*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(BuildFiles)" DestinationFolder="ProtectorCampaign\plugins" />
+		<ItemGroup>
+			<OutputFolder Include="ProtectorCampaign\*" />
+		</ItemGroup>
+		<ItemGroup>
+			<SlugbaseFolder Include="ProtectorCampaign\slugbase\*" />
+		</ItemGroup>
+		<ItemGroup>
+			<ScenesFolder Include="ProtectorCampaign\slugbase\scenes\*" />
+		</ItemGroup>
+		<ItemGroup>
+			<SlugcatWhiteFolder Include="ProtectorCampaign\slugbase\scenes\slugcat - white\*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(OutputFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign" />
+		<Copy SourceFiles="@(SlugbaseFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\slugbase" />
+		<Copy SourceFiles="@(ScenesFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\slugbase\scenes" />
+		<Copy SourceFiles="@(SlugcatWhiteFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\slugbase\scenes\slugcat - white" />
+		<Copy SourceFiles="@(BuildFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\plugins" />
+	</Target>
+
+</Project>

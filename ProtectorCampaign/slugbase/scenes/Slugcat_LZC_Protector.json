@@ -1,0 +1,49 @@
+{
+    "id": "Slugcat_LZC_Protector",
+    "scene_folder": "slugbase/scenes/slugcat - white",
+    "images": [
+        {
+            "name": "white background - 5",
+            "pos": [ 0, 0 ],
+            "depth": 3.6
+        },
+        {
+            "name": "white haze - 4",
+            "pos": [ 0, 0 ],
+            "depth": 3.2,
+            "shader": "Lighten"
+        },
+        {
+            "name": "white bkgplants - 3",
+            "pos": [ 0, 0 ],
+            "depth": 3.1
+        },
+        {
+            "name": "white vines - 1",
+            "pos": [ 0, 0 ],
+            "depth": 2.8
+        },
+        {
+            "name": "white slugcat - 2",
+            "pos": [ 0, 0 ],
+            "depth": 2.7,
+            "shader": "LightEdges"
+        },
+        {
+            "name": "white fgplants - 0",
+            "pos": [ 0, 0 ],
+            "depth": 2.1
+        },
+        {
+            "name": "slugcat - white - flat",
+            "pos": [ 683, 384 ],
+            "depth": -1.0,
+            "flatmode": true
+        }
+    ],
+    "idle_depths": [ 3.6, 2.8, 2.7, 2.6, 1.5 ],
+    "glow_pos": [ -30, -50 ],
+    "mark_pos": [ -15, -2 ],
+    "select_menu_pos": [ -10, 100 ],
+    "slugcat_depth": 3.1
+}

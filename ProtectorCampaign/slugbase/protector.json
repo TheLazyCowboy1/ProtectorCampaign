@@ -1,0 +1,31 @@
+{
+    "id": "LZC_Protector",
+    "name": "The Protector",
+    "description": "That name is a placeholder. It will likely change in the near future.<LINE>Cool space-and-time-warping campaign with a myriad endings.",
+    "features": {
+        "color": "101850",
+        "custom_colors": [
+            {
+                "name": "Body",
+                "story": "101850"
+            },
+            {
+                "name": "Eyes",
+                "story": "FFFFFF"
+            },
+            {
+                "name": "Scar",
+                "story": "AA11AA"
+            }
+        ],
+        "start_room": "SS_AI",
+        "select_menu_scene": "Slugcat_LZC_Protector",
+        "the_mark": true,
+        "the_glow": true,
+        "guide_overseer": 0,
+        "food_min": 3,
+        "food_max": 12,
+        "world_state": "White",
+        "expedition_enabled": false
+    }
+}
