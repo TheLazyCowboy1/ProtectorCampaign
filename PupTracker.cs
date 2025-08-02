@@ -1,12 +1,13 @@
 ﻿using MoreSlugcats;
 using SlugBase.SaveData;
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Watcher;
+using static UnityEngine.Mesh;
 
 namespace ProtectorCampaign;
 
@@ -15,11 +16,16 @@ public static class PupTracker
     public static AbstractCreature Slugpup;
     public static float WarpChance = 0;
 
-    public static void TrySpawnSlugpup(Player player, World world)
+    //changed to a coroutine so we can safely wait for the aimap to generate
+    public static IEnumerator TrySpawnSlugpup(Player player, World world)
     {
-        if (Plugin.IsProtectorCampaign && player.playerState.playerNumber == 0 && world.game.IsStorySession
-            && player.room.abstractRoom.name == "SS_AI" && world.game.GetStorySession.saveState.cycleNumber == 0)
+        //try to fix AIMap
+        bool hadToWait = player.room.aimap == null;
+        while (player.room.aimap == null) yield return null;
+        try
         {
+            Debug("Trying to spawn slugpup. Had to wait for AiMap: " + hadToWait);
+
             var ID = world.game.GetNewID();
             //save slugpup ID
             var data = world.game.GetStorySession.saveState.miscWorldSaveData.GetSlugBaseData();
@@ -33,11 +39,12 @@ public static class PupTracker
 
             //realize slugpup
             player.room.abstractRoom.AddEntity(Slugpup);
-            Slugpup.RealizeInRoom(); //sometimes this breaks the loading screen. Why? Idk; it's completely random and out of my control.
+            Slugpup.RealizeInRoom();
             Slugpup.realizedCreature.mainBodyChunk.pos = new(300, 300); //tile 15,15
 
             Debug("Spawned slugpup! ID: " + ID);
-        }
+        } catch (Exception ex) { Error(ex); }
+        yield break;
     }
 
     public static void CycleStarted(RainWorldGame game)
@@ -65,6 +72,22 @@ public static class PupTracker
         //decide whether or not to allow warps this cycle
         WarpChance = UnityEngine.Random.value < WarpChance ? WarpChance : 0;
         Debug("Final chance this cycle: " + WarpChance);
+    }
+
+    public static void MetMoon(OracleBehavior behavior)
+    {
+        try
+        {
+            var data = behavior.oracle.room.world.game.GetStorySession.saveState.miscWorldSaveData.GetSlugBaseData();
+            if (data.TryGet(Plugin.SAVE_KEY_WARP_CHANCE, out float chance))
+            {
+                data.Set(Plugin.SAVE_KEY_WARP_CHANCE, chance + Plugin.MEET_MOON_CHANCE_INCREASE);
+                Debug("Gave pearl to Moon. Set warp chance next cycle to " + (chance + Plugin.MEET_MOON_CHANCE_INCREASE));
+            }
+            else
+                Error("Could not find SAVE_KEY_WARP_CHANCE");
+        }
+        catch (Exception ex) { Error(ex); }
     }
 
     public static void NPCStats_ctor(On.Player.NPCStats.orig_ctor orig, Player.NPCStats self, Player player)
@@ -105,6 +128,10 @@ public static class PupTracker
                         return;
                     }
                 }
+
+                //travelled through a warp and the pup survived = all good
+                if (self.room.game.GetStorySession.warpsTraversedThisCycle > 0)
+                    saveState.deathPersistentSaveData.GetSlugBaseData().Set(Plugin.SAVE_KEY_SKIPPED_WARP, false);
             }
         } catch (Exception ex) { Error(ex); }
 
@@ -149,24 +176,33 @@ public static class PupTracker
             if (self.Stunned) currentChance *= 10;
             currentChance *= 1 + 2 * self.AI.threatTracker.Panic;
 
-            currentChance *= WarpChance * 0.01f; //0.01f means that chance of 1.0 occurs on average every 1.666 minutes
+            currentChance *= WarpChance * Plugin.WARP_CHANCE_PER_SECOND;
             //Debug("CurrentWarpChance: " + currentChance);
 
             if (UnityEngine.Random.value < currentChance && self.room.warpPoints.Count <= 0)
             {
                 //spawn a warp!
-                Debug("Trying to spawn a warp!!!");
+                Debug("Trying to spawn a warp!!! Chance of occurring this second: " + currentChance);
+
                 var saveState = self.abstractPhysicalObject.world.game.GetStorySession.saveState;
+                var miscData = saveState.miscWorldSaveData.GetSlugBaseData();
+                int warpsSpawned = miscData.TryGet(Plugin.SAVE_KEY_WARPS_SPAWNED, out int spawnCount) ? spawnCount : 0;
+                Debug("Warps spawned so far: " + warpsSpawned);
+
+                saveState.deathPersistentSaveData.rippleLevel = warpsSpawned + 1; //warp options are determined by rippleLevel; this opens up more options as time goes on
                 saveState.deathPersistentSaveData.reinforcedKarma = true; //makes it a good warp instead of a bad one
                 Plugin.SlugpupWarp = true;
                 self.SpawnDynamicWarpPoint();
 
+                saveState.deathPersistentSaveData.rippleLevel = 0; //reset rippleLevel
+
                 if (self.room.warpPoints.Count > 0)
                 {
                     saveState.deathPersistentSaveData.GetSlugBaseData().Set(Plugin.SAVE_KEY_SKIPPED_WARP, true);
+                    miscData.Set(Plugin.SAVE_KEY_WARPS_SPAWNED, warpsSpawned + 1);
 
                     //note: this should happen twice; once here, once from going through the warp
-                    saveState.miscWorldSaveData.GetSlugBaseData().Set(Plugin.SAVE_KEY_WARP_CHANCE, Plugin.POST_WARP_CHANCE);
+                    miscData.Set(Plugin.SAVE_KEY_WARP_CHANCE, Plugin.POST_WARP_CHANCE);
                     WarpChance = 0;
 
                     self.abstractPhysicalObject.pos.Tile = new(Mathf.RoundToInt(self.mainBodyChunk.pos.x * 0.05f), Mathf.RoundToInt(self.mainBodyChunk.pos.y * 0.05f));
@@ -189,7 +225,7 @@ public static class PupTracker
             {
                 var saveState = self.room.game.GetStorySession.saveState;
                 saveState.miscWorldSaveData.GetSlugBaseData().Set(Plugin.SAVE_KEY_WARP_CHANCE, Plugin.POST_WARP_CHANCE);
-                saveState.deathPersistentSaveData.GetSlugBaseData().Set(Plugin.SAVE_KEY_SKIPPED_WARP, false); //took a warp, so it probably wasn't skipped
+                //saveState.deathPersistentSaveData.GetSlugBaseData().Set(Plugin.SAVE_KEY_SKIPPED_WARP, false); //took a warp, so it probably wasn't skipped
                 WarpChance = 0;
                 Debug("Entered warp. Set warp chance to " + Plugin.POST_WARP_CHANCE);
             }

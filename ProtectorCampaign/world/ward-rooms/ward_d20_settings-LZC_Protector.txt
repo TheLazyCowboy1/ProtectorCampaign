@@ -1,0 +1,12 @@
+Template: NONE
+Clouds: 0.25
+Grime: 0
+RandomItemDensity: 0.3586957
+RandomItemSpearChance: 0.1021738
+Palette: 81
+EffectColorA: 10
+EffectColorB: 13
+Effects: Fog-1-20-20, Flies-0.2173913-276-22, DarkenLights-0.5014738-35.12619-89.8054, 
+PlacedObjects: ReliableSpear><698.7964><327.6946><, CustomDecal><461.8345><280.4313><3~64~62~60~65~-2~-628~-19~0~0.2717391~0~CryWhale~0.7391304~0.25~0.7391304~0.25~0.7391304~0.25~0.7391304~0.25, LightFixture><632.5621><344.1816><HolyFire~-14.6795~62~36, LightSource><635.2323><342.3008><0.2282609~EffectColor2~3~53~-23~162.6025~0~0~None~0~0, LightSource><634.698><340.7216><0.1304348~EffectColor2~-153~-184~-26~232.6025~0~1~None~0~0, InsectGroup><633.1893><341.1856><0~100~0~0~StandardFly~0.3043478, ReliableSpear><269.0187><328.4491><, ReliableSpear><550.7916><289.6956><, KarmaFlower><491.8174><381.9456><0~0~5~7, SlimeMold><236.8523><347.1987><0~0~2~3, SlimeMold><302.8655><337.9498><0~0~2~3, SlimeMold><396.103><321.4488><0~0~2~3, SlimeMold><410.2056><310.567><0~0~2~3, SlimeMold><620.2416><303.8375><238~220~2~3, SlimeMold><574.6959><303.411><176~128~2~3, SlimeMold><335.2859><324.4291><0~0~2~3, CosmeticSlimeMold><640.3022><288.8427><-8~54, CosmeticSlimeMold2><300.1776><320.468><-17~113, LightFixture><264.9402><314.6891><SlimeMoldLight~17.32051~-10~7, WarpPoint><371.9189><373.5672><-100~96.99997~NULL~Artificer~LC~lc_c07~1010~1490~84e407f1-714e-4f88-b73c-5fd9da6e66c0~WatcherOnly~0~6~8~4~8~4~4~4~7~150~150~-1~0~0~false~false~false~false~false~0~-1, 
+AmbientSounds: OMNI><AM_ENV-SubTerr.ogg><127.6046><50.36267><0.1521741><1, OMNI><SO_SFX-Morse.ogg><501.0614><48.81653><0.04347826><1.9, OMNI><SO_NAT-Fire.ogg><316.4484><55.69324><0.1521733><1, 
+FadePalette: 454, 0.75

@@ -27,10 +27,17 @@ public class ConfigOptions : OptionInterface
             optionsTab
         };
 
+        OpHoldButton clearAchievementButton;
+
         float t = 150f, y = 550f, h = -40f, H = -70f, x = 50f, w = 80f, c = 50f;
         float t2 = 400f, x2 = 300f;
 
-        
+        optionsTab.AddItems(
+
+            clearAchievementButton = new OpHoldButton(new(150, 150), new Vector2(100, 40), "Clear Achievements") { description = "Clears all achievements for the currently active save file." }
+            );
+
+        clearAchievementButton.OnHeld += (evt) => AchievementManager.ClearAllAchievements();
     }
 
 }
