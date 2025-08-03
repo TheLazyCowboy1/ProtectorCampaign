@@ -24,14 +24,15 @@ public static class Conversations
     //public static void WorldLoader_ctor(On.WorldLoader.orig_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues orig, WorldLoader self, RainWorldGame game, SlugcatStats.Name playerCharacter, SlugcatStats.Timeline timelinePosition, bool singleRoomWorld, string worldName, Region region, RainWorldGame.SetupValues setupValues)
 
 
-    public static void OverWorld_InitiateSpecialWarp_WarpPoint(On.OverWorld.orig_InitiateSpecialWarp_WarpPoint orig, OverWorld self, ISpecialWarp callback, WarpPoint.WarpPointData warpData, bool useNormalWarpLoader)
+    //public static void OverWorld_InitiateSpecialWarp_WarpPoint(On.OverWorld.orig_InitiateSpecialWarp_WarpPoint orig, OverWorld self, ISpecialWarp callback, WarpPoint.WarpPointData warpData, bool useNormalWarpLoader)
+    public static void UpdateTimeline(WarpPoint self)
     {
         try
         {
-            if (Plugin.IsProtectorCampaign && self.game.IsStorySession && warpData.destTimeline != null)
+            if (Plugin.IsProtectorCampaign && self.room.game.IsStorySession && self.Data.destTimeline != null)
             {
-                var newTimeline = warpData.destTimeline;
-                var saveState = self.game.GetStorySession.saveState;
+                var newTimeline = self.Data.destTimeline;
+                var saveState = self.room.game.GetStorySession.saveState;
                 //only update iterator data if we're CHANGING timelines
                 if (saveState.currentTimelinePosition != newTimeline)
                 {
@@ -62,7 +63,7 @@ public static class Conversations
             }
         } catch (Exception ex) { Error(ex); }
 
-        orig(self, callback, warpData, useNormalWarpLoader);
+        //orig(self, callback, warpData, useNormalWarpLoader);
     }
 
 

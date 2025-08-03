@@ -74,13 +74,17 @@ public partial class Plugin : BaseUnityPlugin
             //On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues -= WorldLoader_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues;
             On.Room.TrySpawnWarpPoint -= Room_TrySpawnWarpPoint;
             WarpFatigueHook?.Undo();
-            On.Watcher.WarpPoint.PerformWarp -= PupTracker.WarpPoint_PerformWarp;
+            //OverworldTimelineHook?.Undo();
+            //On.Watcher.WarpPoint.PerformWarp -= PupTracker.WarpPoint_PerformWarp;
+            On.Watcher.WarpPoint.PerformWarp -= WarpPoint_PerformWarp;
+            On.OverWorld.InitiateSpecialWarp_WarpPoint -= OverWorld_InitiateSpecialWarp_WarpPoint;
+            On.OverWorld.Update -= OverWorld_Update;
+
             On.Watcher.WarpPoint.ProvideAir -= PupTracker.WarpPoint_ProvideAir;
 
             On.RoomSettings.ctor_Room_string_Region_bool_bool_Timeline_RainWorldGame -= RoomSettings_ctor_Room_string_Region_bool_bool_Timeline_RainWorldGame;
 
             //On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues -= Conversations.WorldLoader_ctor;
-            On.OverWorld.InitiateSpecialWarp_WarpPoint -= Conversations.OverWorld_InitiateSpecialWarp_WarpPoint;
             On.SSOracleBehavior.PebblesConversation.AddEvents -= Conversations.PebblesConversation_AddEvents;
             On.SLOracleBehaviorHasMark.MoonConversation.AddEvents -= Conversations.MoonConversation_AddEvents;
             On.SSOracleBehavior.SeePlayer -= Conversations.SSOracleBehavior_SeePlayer;
@@ -96,6 +100,7 @@ public partial class Plugin : BaseUnityPlugin
 
     private Hook BackpackSlugpupHook;
     private Hook WarpFatigueHook;
+    //private Hook OverworldTimelineHook;
 
     private bool IsInit;
     private void RainWorldOnOnModsInit(On.RainWorld.orig_OnModsInit orig, RainWorld self)
@@ -128,8 +133,14 @@ public partial class Plugin : BaseUnityPlugin
             try {
                 WarpFatigueHook = new(typeof(StoryGameSession).GetProperty(nameof(StoryGameSession.warpTraversalsLeftUntilFullWarpFatigue)).GetGetMethod(),
                     StoryGameSession_WarpTraversalsLeftUntilFullWarpFatigue);
+                //OverworldTimelineHook = new(typeof(OverWorld).GetProperty(nameof(OverWorld.PlayerTimelinePosition)).GetGetMethod(),
+                    //Overworld_PlayerTimelinePosition);
             } catch (Exception ex) { Logger.LogError(ex); }
-            On.Watcher.WarpPoint.PerformWarp += PupTracker.WarpPoint_PerformWarp;
+            //On.Watcher.WarpPoint.PerformWarp += PupTracker.WarpPoint_PerformWarp;
+            On.Watcher.WarpPoint.PerformWarp += WarpPoint_PerformWarp;
+            On.OverWorld.InitiateSpecialWarp_WarpPoint += OverWorld_InitiateSpecialWarp_WarpPoint;
+            On.OverWorld.Update += OverWorld_Update;
+
             On.Watcher.WarpPoint.ProvideAir += PupTracker.WarpPoint_ProvideAir;
 
             //World changes
@@ -137,7 +148,7 @@ public partial class Plugin : BaseUnityPlugin
 
             //conversations
             //On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues += Conversations.WorldLoader_ctor;
-            On.OverWorld.InitiateSpecialWarp_WarpPoint += Conversations.OverWorld_InitiateSpecialWarp_WarpPoint;
+            //On.OverWorld.InitiateSpecialWarp_WarpPoint += Conversations.OverWorld_InitiateSpecialWarp_WarpPoint;
             On.SSOracleBehavior.PebblesConversation.AddEvents += Conversations.PebblesConversation_AddEvents;
             On.SLOracleBehaviorHasMark.MoonConversation.AddEvents += Conversations.MoonConversation_AddEvents;
             On.SSOracleBehavior.SeePlayer += Conversations.SSOracleBehavior_SeePlayer;
@@ -435,6 +446,61 @@ public partial class Plugin : BaseUnityPlugin
     private int StoryGameSession_WarpTraversalsLeftUntilFullWarpFatigue(Func<StoryGameSession, int> orig, StoryGameSession self)
     {
         return IsProtectorCampaign ? 9999 : orig(self);
+    }
+
+    private SlugcatStats.Timeline Overworld_PlayerTimelinePosition(Func<OverWorld, SlugcatStats.Timeline> orig, OverWorld self)
+    {
+        return self.warpData != null ? self.warpData.destTimeline : orig(self);
+    }
+
+    //correctly set the timeline
+    private void WarpPoint_PerformWarp(On.Watcher.WarpPoint.orig_PerformWarp orig, WarpPoint self)
+    {
+        Conversations.UpdateTimeline(self);
+        PupTracker.WarpPerformed(self);
+
+        orig(self);
+
+        try
+        {
+            self.room.game.GetStorySession.saveState.currentTimelinePosition = self.Data.destTimeline;
+            Logger.LogDebug("Warping to timeline " + self.Data.destTimeline);
+        } catch (Exception ex) { Logger.LogError(ex); }
+    }
+
+    private void OverWorld_InitiateSpecialWarp_WarpPoint(On.OverWorld.orig_InitiateSpecialWarp_WarpPoint orig, OverWorld self, ISpecialWarp callback, WarpPoint.WarpPointData warpData, bool useNormalWarpLoader)
+    {
+        SlugcatStats.Timeline source = self.game.TimelinePoint, dest = warpData.destTimeline;
+        orig(self, callback, warpData, useNormalWarpLoader);
+
+        try
+        {
+            warpData.destTimeline = dest;
+            self.game.GetStorySession.saveState.currentTimelinePosition = source;
+            Logger.LogDebug($"Aborted switching timelines. Current timelines: source={source}, dest={dest}");
+        }
+        catch (Exception ex) { Logger.LogError(ex); }
+    }
+
+    private void OverWorld_Update(On.OverWorld.orig_Update orig, OverWorld self)
+    {
+        try
+        {
+            if (self.warpingPreload && Region.RegionReadyToWarp)
+            {
+                var save = self.game.GetStorySession.saveState;
+                var source = save.currentTimelinePosition;
+                save.currentTimelinePosition = self.warpData.destTimeline;
+                orig(self);
+                save.currentTimelinePosition = source;
+
+                Logger.LogDebug($"Loading warp world loader using timeline {self.warpData.destTimeline} instead of {source}");
+                return;
+            }
+        }
+        catch (Exception ex) { Logger.LogError(ex); }
+
+        orig(self);
     }
 
     #endregion

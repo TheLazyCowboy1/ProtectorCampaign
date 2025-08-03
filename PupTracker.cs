@@ -217,7 +217,8 @@ public static class PupTracker
     }
 
     //Set warp chance to 0 for every warp taken
-    public static void WarpPoint_PerformWarp(On.Watcher.WarpPoint.orig_PerformWarp orig, WarpPoint self)
+    //public static void WarpPoint_PerformWarp(On.Watcher.WarpPoint.orig_PerformWarp orig, WarpPoint self)
+    public static void WarpPerformed(WarpPoint self)
     {
         try
         {
@@ -232,7 +233,7 @@ public static class PupTracker
         }
         catch (Exception ex) { Error(ex); }
 
-        orig(self);
+        //orig(self);
     }
 
     //Reverse changes to the slugpup right before warping

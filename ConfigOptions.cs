@@ -34,10 +34,14 @@ public class ConfigOptions : OptionInterface
 
         optionsTab.AddItems(
 
-            clearAchievementButton = new OpHoldButton(new(150, 150), new Vector2(100, 40), "Clear Achievements") { description = "Clears all achievements for the currently active save file." }
+            clearAchievementButton = new OpHoldButton(new(50, 50), new Vector2(150, 40), "Clear Achievements") { description = "Clears all achievements for the currently active save file." }
             );
 
-        clearAchievementButton.OnHeld += (evt) => AchievementManager.ClearAllAchievements();
+        clearAchievementButton.OnPressDone += (trigger) =>
+        {
+            AchievementManager.ClearAllAchievements();
+            trigger?.Menu?.PlaySound(SoundID.MENU_Checkbox_Check);
+        };
     }
 
 }
