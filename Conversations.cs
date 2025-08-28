@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using Watcher;
+using static ProtectorCampaign.Constants;
 
 namespace ProtectorCampaign;
 
@@ -43,18 +44,18 @@ public static class Conversations
 
                     //save data for the old timeline
                     int[] data = new int[] { miscSave.SSaiConversationsHad, miscSave.SSaiThrowOuts, miscSave.cyclesSinceSSai };
-                    slugData.Set(Plugin.SAVE_PREFIX_PEBBLES_DATA + saveState.currentTimelinePosition.value, data);
-                    slugData.Set(Plugin.SAVE_PREFIX_MOON_STATE + saveState.currentTimelinePosition.value, miscSave.SLOracleState.ToString());
+                    slugData.Set(SAVE_PREFIX_PEBBLES_DATA + saveState.currentTimelinePosition.value, data);
+                    slugData.Set(SAVE_PREFIX_MOON_STATE + saveState.currentTimelinePosition.value, miscSave.SLOracleState.ToString());
 
                     //load data for the new timeline
-                    if (!slugData.TryGet(Plugin.SAVE_PREFIX_PEBBLES_DATA + newTimeline.value, out int[] pebData))
+                    if (!slugData.TryGet(SAVE_PREFIX_PEBBLES_DATA + newTimeline.value, out int[] pebData))
                         pebData = new int[0];
                     miscSave.SSaiConversationsHad = pebData.Length > 0 ? pebData[0] : 0;
                     miscSave.SSaiThrowOuts = pebData.Length > 1 ? pebData[1] : 0;
                     miscSave.cyclesSinceSSai = pebData.Length > 2 ? pebData[2] : 0;
 
                     miscSave.SLOracleState.ForceResetState(new(newTimeline.value));
-                    if (slugData.TryGet(Plugin.SAVE_PREFIX_MOON_STATE + newTimeline.value, out string moonState))
+                    if (slugData.TryGet(SAVE_PREFIX_MOON_STATE + newTimeline.value, out string moonState))
                     {
                         miscSave.SLOracleState.FromString(moonState);
                         Debug("Found Moon State!");
@@ -75,12 +76,20 @@ public static class Conversations
             if (Plugin.IsProtectorCampaign)
             {
                 var storySession = self.oracle.room.game.GetStorySession;
-                var tempSaveNum = storySession.saveState.saveStateNumber;
-                storySession.saveStateNumber = new(storySession.saveState.currentTimelinePosition.value);
-                orig(self);
-                storySession.saveStateNumber = tempSaveNum;
-                Debug("Initiating Pebbles behavior for " + storySession.saveState.currentTimelinePosition);
-                return;
+                var timeline = storySession.saveState.currentTimelinePosition;
+
+                //So far, only override behavior for Gourmand timeline. Treat every other timeline like Survivor's
+                //also override for Spearmaster LttM
+                if (timeline == SlugcatStats.Timeline.Gourmand
+                    || (timeline == SlugcatStats.Timeline.Spear && self.oracle.ID == MoreSlugcatsEnums.OracleID.DM))
+                {
+                    var tempSaveNum = storySession.saveState.saveStateNumber;
+                    storySession.saveStateNumber = new(timeline.value); //roughly convert timeline to slugcat; should work for vanilla/Downpour scugs
+                    orig(self);
+                    storySession.saveStateNumber = tempSaveNum;
+                    Debug("Initiating Pebbles behavior for " + timeline);
+                    return;
+                }
             }
         } catch (Exception ex) { Error(ex); }
         orig(self);
@@ -106,6 +115,24 @@ public static class Conversations
         orig(self);
     }
 
+    //Fix annoyingly refusing to read Hunter pearl sometimes
+    public static void SLOracleBehaviorHasMark_GrabObject(On.SLOracleBehaviorHasMark.orig_GrabObject orig, SLOracleBehaviorHasMark self, PhysicalObject item)
+    {
+        try
+        {
+            if (Plugin.IsProtectorCampaign && item.abstractPhysicalObject.type == AbstractPhysicalObject.AbstractObjectType.DataPearl
+                && (item.abstractPhysicalObject as DataPearl.AbstractDataPearl).dataPearlType == DataPearl.AbstractDataPearl.DataPearlType.Red_stomach
+                && self.CheckSlugpupsInRoom()
+                && !self.State.unrecognizedSaveStrings.Contains(MOON_SAVE_KEY_READ_PEARL))
+            {
+                self.State.significantPearls.Remove(DataPearl.AbstractDataPearl.DataPearlType.Red_stomach); //make sure we can still read the pearl
+                Debug("Cleared Red_stomach from read pearls list, if it was already there.");
+            }
+        } catch (Exception ex) { Error(ex); }
+
+        orig(self, item);
+    }
+
 
     public static void PebblesConversation_AddEvents(On.SSOracleBehavior.PebblesConversation.orig_AddEvents orig, SSOracleBehavior.PebblesConversation self)
     {
@@ -116,26 +143,99 @@ public static class Conversations
             {
                 if (self.id == Conversation.ID.Pebbles_White)
                 {
-                    //self.events.Add(new SSOracleBehavior.PebblesConversation.WaitEvent(self, 100)); //wait 2.5 seconds
-                    self.events.Add(new Conversation.TextEvent(self, 100, self.Translate("...is this reaching you?"), 0));
-                    self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 10));
+                    var timeline = self.owner.oracle.room.game.TimelinePoint;
 
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("This is good. At last, you function."), 0)); //alien phrasing - intentional
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I began to consider your body another failed experiment. Fortunately, your awakening interrupted such contemplations,<LINE>and it shall soon put to rest many other bothers."), 0));
-                    self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 60));
+                    if (timeline == SlugcatStats.Timeline.Spear)
+                    {
+                        //Moon Spearmaster behavior
+                        if (self.owner.oracle.ID == MoreSlugcatsEnums.OracleID.DM)
+                        {
+                            MoonMeetSpear(self);
 
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("The child before you has incessantly distracted my attention for several cycles. You are ordered to remove it from my presence and deliver it to a suitable location."), 0));
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I have given my word that the child will not be harmed - a careless mistake of mine.<LINE>As a result, activities such as disposing of the child and neglecting its care are expressly forbidden."), 0));
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("However, I care not where you take the child. I suggest you deliver it to my neighbor, Looks to the Moon. My overseers have instructions to guide you in that direction."), 0));
-                    self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 20));
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("...Considering her situation, I doubt that she will refuse to assume ownership of the problem.<LINE>Unlike myself, she is likely incapable of important work."), 0));
-                    self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 60));
+                            return;
+                        }
+                        else //Pebbles
+                        {
+                            PebblesMeetSpear(self);
 
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Travel with speed and caution, little servant. Your services, although minute, shall be appreciated.<LINE>In the meantime, I must resume my work."), 0));
+                            return;
+                        }
+                    }
+                    else if (timeline == SlugcatStats.Timeline.Artificer)
+                    {
+                        PebblesMeetSpear(self); //It might be good to make this unique later, but this should be good enough
 
-                    Debug("Set up custom conversation replacing Pebbles_White");
+                        return;
+                    }
+                    else if (timeline == SlugcatStats.Timeline.Sofanthiel)
+                    {
+                        PebblesMeetInv(self);
 
-                    return; //don't add the default events; only add my own
+                        return;
+                    }
+                    else if (timeline == SlugcatStats.Timeline.Red)
+                    {
+                        PebblesMeetRed(self);
+
+                        return;
+                    }
+                    /*else if (timeline == SlugcatStats.Timeline.Gourmand) //Not Applicable here; Gourmand uses separate conversation ID
+                    {
+                        PebblesMeetRed(self);
+
+                        return;
+                    }*/
+                    else if (timeline == SlugcatStats.Timeline.White)
+                    {
+                        PebblesMeetWhite(self);
+
+                        return; //don't add the default events; only add my own
+                    }
+                    else if (SlugcatStats.AtOrBeforeTimeline(timeline, SlugcatStats.Timeline.White)) //Hopefully impossible catch-case
+                    {
+                        PebblesMeetRed(self);
+
+                        return;
+                    }
+                    else //Monk + catch-case for any custom timelines
+                    {
+                        PebblesMeetYellow(self);
+
+                        return;
+                    }
+                }
+                else if (self.id == Conversation.ID.Pebbles_Red_Green_Neuron)
+                {
+                    //functional Moon get neuron
+                    if (self.owner.oracle.ID == MoreSlugcatsEnums.OracleID.DM)
+                    {
+                        MoonMeetSpearWithNeuron(self);
+
+                        return;
+                    }
+                    else //Pebbles
+                    {
+                        var timeline = self.owner.oracle.room.game.TimelinePoint;
+                        //Post-collapse dialogue
+                        if (SlugcatStats.AtOrAfterTimeline(timeline, SlugcatStats.Timeline.Artificer))
+                        {
+                            PebblesDiscussNeuron(self);
+
+                            return;
+                        }
+                        else //Pre-collapse dialogue
+                        {
+                            PebblesDiscussNeuronEarly(self);
+
+                            return;
+                        }
+                    }
+                }
+                else if (self.id == MoreSlugcatsEnums.ConversationID.Pebbles_Gourmand)
+                {
+                    PebblesMeetGourmand(self);
+
+                    return;
                 }
             }
         }
@@ -151,82 +251,38 @@ public static class Conversations
         {
             if (Plugin.IsProtectorCampaign)
             {
-                /*if (self.id == Conversation.ID.MoonFirstPostMarkConversation)
-                {
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("u stupid slugcat"), 0));
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("go away"), 0));
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("jk u good"), 0));
-
-                    Debug("Set up custom conversation replacing MoonFirstPostMarkConversation");
-                    return;
-                }*/
 
                 if (self.id == Conversation.ID.Moon_Pearl_Red_stomach)
                 {
-                    self.PearlIntro();
-
-                    if (!self.State.unrecognizedSaveStrings.Contains(Plugin.MOON_SAVE_KEY_READ_PEARL))
+                    if (!self.State.unrecognizedSaveStrings.Contains(MOON_SAVE_KEY_READ_PEARL))
                     { //new reading
                         if (self.myBehavior.CheckSlugpupsInRoom())
                         { //with slugpup
-                            self.State.likesPlayer = Mathf.Max(self.State.likesPlayer, 1f);
-                            PupTracker.MetMoon(self.myBehavior);
-                            AchievementManager.GavePearlToMoon();
-                            self.State.unrecognizedSaveStrings.Add(Plugin.MOON_SAVE_KEY_READ_PEARL); //only mark it as read if we get full dialogue
+                            MoonGivenStomachPearl(self);
 
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("..."), 0));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("This pearl... is addressed as a message to me?<LINE>Ah..."), 0));
-                            self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("Little creature... I am sorry."), 0));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I cannot help you with this. Surely you can see why."), 20));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("In my current state, I cannot possibly provide the care you seek for your child.<LINE>This little one needs food, safety, instruction in the ways of the wild...<LINE>I can offer none of these things."), 0));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("It pains me that I cannot serve you in this way. Truly, I have dreamed of an opportunity like this for some time.<LINE>I crave company, tutelage, and - more than anything - purpose."), 20));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("You likely are frustrated by your predicament. You travelled all this way hoping for the completion of your task,<LINE>yet you seem no closer to that end. Little servant, I hope that you are not resentful of this burden placed upon you."), 0));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("In the end, the most I can offer is this (a small comfort - if comfort it can be called):<LINE>Your hardships are a hidden blessing that others desire. Because of your task, you have purpose, freedom, and company.<LINE>Do not lose heart. Cherish your - yes, your - child."), 0)); ;
-                            self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("In truth, I envy you. If I were in any other state, I would gladly care for this little one."), 10));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("But I trust that you will continue to guard this child, and I trust that you will find peace doing so."), 0));
-
-                            Debug("Set up custom pearl reading (new with slugpup) replacing Moon_Pearl_Red_stomach");
                             return;
                         }
                         else
                         { //without slugpup
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("..."), 0));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("This pearl... is addressed as a message to me?<LINE>The message is freshly written, but it doesn't make sense in this situation."), 0));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("It mentions two creatures, a messenger and a child. Are you the messenger or the child? Or did you find this somewhere?<LINE>I sincerely hope that you are not the messenger mentioned here, because that would mean you lost the little one entrusted to you."), 20));
-                            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Regardless, I clearly cannot do what this pearl requests."), 0));
-                            self.events.Add(new Conversation.TextEvent(self, 20, self.Translate("Perhaps you would like me to read it to you?"), 0));
+                            MoonGivenStomachPearlNoPup(self);
 
-                            Debug("Set up custom pearl reading (new withOUT slugpup) replacing Moon_Pearl_Red_stomach");
+                            return;
                         }
                     }
                     else
                     { //repeat reading
-                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("..."), 0));
-                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Ah, this pearl again.<LINE>Little creature, you know that I cannot assist you in caring for the child."), 0));
-                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Would you like me to read the contents of the pearl to you?"), 0));
+                        MoonGivenStomachPearlRepeat(self);
 
-                        Debug("Set up custom pearl reading (repeat reading) replacing Moon_Pearl_Red_stomach");
+                        return;
                     }
-
-                    //read the pearl
-                    self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Let's see... \"PEARL CONTENTS GO HERE\""), 0));
-
-                    return;
                 }
 
                 if (self.id == Conversation.ID.MoonSecondPostMarkConversation)
                 {
-                    if (self.State.unrecognizedSaveStrings.Contains(Plugin.MOON_SAVE_KEY_READ_PEARL))
+                    if (self.State.unrecognizedSaveStrings.Contains(MOON_SAVE_KEY_READ_PEARL))
                     {
-                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Oh, hello again!"), 10));
-                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I wonder what it is that you want?"), 0));
-                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("There is nothing here. Not even my memories remain."), 0));
-                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Perhaps you seek guidance? Or maybe you're curious to see me?"), 0));
-                        self.events.Add(new Conversation.TextEvent(self, 20, self.Translate("If you desire direction, I cannot help you much, little one."), 0));
-                        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Maybe you can return to Five Pebbles. He might know how to help, if he's willing. He seemed glad to be rid of you.<LINE>I think you'll have to wander with your child in search of a home. I'm sure that, somewhere,<LINE>you can find a suitable abode. Maybe you can even find a larger family?"), 0));
-                        self.events.Add(new Conversation.TextEvent(self, 20, self.Translate("I know this place has little to offer you, but you're always welcome to stay here.<LINE>I do appreciate the company."), 20));
+                        MoonSecondEncounterAfterPearl(self);
 
-                        Debug("Set up custom conversation replacing MoonSecondPostMarkConversation");
                         return;
                     }
                 }
@@ -236,6 +292,284 @@ public static class Conversations
 
         orig(self);
     }
+
+
+    #region Pebbles
+
+    private static void PebblesMeetSpear(SSOracleBehavior.PebblesConversation self)
+    {
+        //Pebbles is stressed and unusually abrupt with his conversation
+
+        self.events.Add(new Conversation.TextEvent(self, 100, self.Translate("...is this reaching you?"), 0));
+
+        Debug("Set up custom conversation replacing Pebbles_White");
+    }
+
+    private static void PebblesMeetInv(SSOracleBehavior.PebblesConversation self)
+    {
+        //Hehe funny joke Pebbles
+        //Probably make him say some "meta" stuff or explain the lore or something funny like that
+    }
+
+    private static void PebblesDiscussNeuronEarly(SSOracleBehavior.PebblesConversation self)
+    {
+        //Slag keys? Funny. Why do we have them, though? They seemingly serve no purpose.
+    }
+
+    private static void PebblesMeetRed(SSOracleBehavior.PebblesConversation self)
+    {
+        //Significantly calmer than for Spearmaster
+    }
+
+    private static void PebblesDiscussNeuron(SSOracleBehavior.PebblesConversation self)
+    {
+        //Basically same as for Hunter, but omit the talk about Hunter's sickness
+    }
+
+    private static void PebblesMeetGourmand(SSOracleBehavior.PebblesConversation self)
+    {
+        //"Stupid slugcats everywhere GET OUT OF MY FACILITY!!"
+
+        //open OE gate
+        try
+        {
+            self.owner.oracle.room.game.GetStorySession.saveState.miscWorldSaveData.GetSlugBaseData().Set(SAVE_KEY_OE_OPEN, true);
+            Debug("Opened Outer Expanse gate!");
+        } catch (Exception ex) { Error(ex); }
+
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("yo sup"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("good day"), 0));
+    }
+
+    //INITIAL WAKEUP SEQUENCE
+    private static void PebblesMeetWhite(SSOracleBehavior.PebblesConversation self)
+    {
+        //self.events.Add(new SSOracleBehavior.PebblesConversation.WaitEvent(self, 100)); //wait 2.5 seconds
+        self.events.Add(new Conversation.TextEvent(self, 100, self.Translate("...is this reaching you?"), 0));
+        self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 10));
+
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("This is good. At last, you function."), 0)); //alien phrasing - intentional
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I began to consider your body another failed experiment. Fortunately, your awakening interrupted such contemplations,<LINE>and it shall soon put to rest many other bothers."), 0));
+        self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 60));
+
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("The child before you has incessantly distracted my attention for several cycles. You are ordered to remove it from my presence and deliver it to a suitable location."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I have given my word that the child will not be harmed - a careless mistake of mine.<LINE>As a result, activities such as disposing of the child and neglecting its care are expressly forbidden."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("However, I care not where you take the child. I suggest you deliver it to my neighbor, Looks to the Moon. My overseers have instructions to guide you in that direction."), 0));
+        self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 20));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("...Considering her situation, I doubt that she will refuse to assume ownership of the problem.<LINE>Unlike myself, she is likely incapable of important work."), 0));
+        self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 60));
+
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Travel with speed and caution, little servant. Your services, although minute, shall be appreciated.<LINE>In the meantime, I must resume my work."), 0));
+
+        Debug("Set up custom conversation replacing Pebbles_White");
+    }
+
+    private static void PebblesMeetYellow(SSOracleBehavior.PebblesConversation self)
+    {
+        //"Why are you back here? I'm not a homeless shelter for slugcats."
+    }
+
+    #endregion
+
+
+
+    #region Moon
+
+    //withOUT neuron
+    private static void MoonMeetSpear(SSOracleBehavior.PebblesConversation self)
+    {
+        //Pretty basic greeting, I assume
+    }
+
+    private static void MoonMeetSpearWithNeuron(SSOracleBehavior.PebblesConversation self)
+    {
+        //Confused about neuron's purpose
+    }
+
+    private static void MoonGivenStomachPearl(SLOracleBehaviorHasMark.MoonConversation self)
+    {
+        //affect like; give achievement; mark as read
+        self.State.likesPlayer = Mathf.Max(self.State.likesPlayer, 1f);
+        PupTracker.MetMoon(self.myBehavior);
+        AchievementManager.GavePearlToMoon();
+        self.State.unrecognizedSaveStrings.Add(MOON_SAVE_KEY_READ_PEARL); //only mark it as read if we get full dialogue
+
+        self.PearlIntro();
+
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("..."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("This pearl... is addressed as a message to me?<LINE>Ah..."), 0));
+
+        if (self.myBehavior.oracle.ID == MoreSlugcatsEnums.OracleID.DM)
+        {
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("You win!!!"), 0));
+
+            self.events.Add(new FadeOutEvent(self, 0, 80));
+            self.events.Add(new EndGameEvent(self, 10, CustomEnding.SpearmasterMoon));
+        }
+        else //Shoreline Moon!
+        {
+            self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("Little creature... I am sorry."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I cannot help you with this. Surely you can see why."), 20));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("In my current state, I cannot possibly provide the care you seek for your child.<LINE>This little one needs food, safety, instruction in the ways of the wild...<LINE>I can offer none of these things."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("It pains me that I cannot serve you in this way. Truly, I have dreamed of an opportunity like this for some time.<LINE>I crave company, tutelage, and - more than anything - purpose."), 20));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("You likely are frustrated by your predicament. You travelled all this way hoping for the completion of your task,<LINE>yet you seem no closer to that end. Little servant, I hope that you are not resentful of this burden placed upon you."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("In the end, the most I can offer is this (a small comfort - if comfort it can be called):<LINE>Your hardships are a hidden blessing that others desire. Because of your task, you have purpose, freedom, and company.<LINE>Do not lose heart. Cherish your - yes, your - child."), 0)); ;
+            self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("In truth, I envy you. If I were in any other state, I would gladly care for this little one."), 10));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("But I trust that you will continue to guard this child, and I trust that you will find peace doing so."), 0));
+        }
+
+        Debug("Set up custom pearl reading (new with slugpup) replacing Moon_Pearl_Red_stomach");
+    }
+
+    private static void MoonGivenStomachPearlNoPup(SLOracleBehaviorHasMark.MoonConversation self)
+    {
+        self.PearlIntro();
+
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("..."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("This pearl... is addressed as a message to me?<LINE>The message is freshly written, but it doesn't make sense in this situation."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("It mentions two creatures, a messenger and a child. Are you the messenger or the child? Or did you find this somewhere?<LINE>I sincerely hope that you are not the messenger mentioned here, because that would mean you lost the little one entrusted to you."), 20));
+        if (self.myBehavior.oracle.ID != MoreSlugcatsEnums.OracleID.DM)
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Regardless, I clearly cannot do what this pearl requests."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 20, self.Translate("Perhaps you would like me to read it to you?"), 0));
+
+        Debug("Set up custom pearl reading (new withOUT slugpup) replacing Moon_Pearl_Red_stomach");
+
+        MoonReadStomachPearl(self);
+    }
+
+    private static void MoonGivenStomachPearlRepeat(SLOracleBehaviorHasMark.MoonConversation self)
+    {
+        self.PearlIntro();
+
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("..."), 0));
+        if (self.myBehavior.oracle.ID == MoreSlugcatsEnums.OracleID.DM)
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Ah, this pearl again."), 0));
+        else
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Ah, this pearl again.<LINE>Little creature, you know that I cannot assist you in caring for the child."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Would you like me to read the contents of the pearl to you?"), 0));
+
+        Debug("Set up custom pearl reading (repeat reading) replacing Moon_Pearl_Red_stomach");
+
+        MoonReadStomachPearl(self);
+    }
+
+    private static void MoonReadStomachPearl(SLOracleBehaviorHasMark.MoonConversation self)
+    {
+        //read the pearl
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Let's see... \"PEARL CONTENTS GO HERE\""), 0));
+    }
+
+    private static void MoonSecondEncounterAfterPearl(SLOracleBehaviorHasMark.MoonConversation self)
+    {
+        //similar to original dialogue
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Oh, hello again!"), 10));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I wonder what it is that you want?"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("There is nothing here. Not even my memories remain."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Perhaps you seek guidance? Or maybe you're curious to see me?"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 20, self.Translate("If you desire direction, I cannot help you much, little one."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Maybe you can return to Five Pebbles. He might know how to help, if he's willing. He seemed glad to be rid of you.<LINE>I think you'll have to wander with your child in search of a home. I'm sure that, somewhere,<LINE>you can find a suitable abode. Maybe you can even find a larger family?"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 20, self.Translate("I know this place has little to offer you, but you're always welcome to stay here.<LINE>I do appreciate the company."), 20));
+
+        Debug("Set up custom conversation replacing MoonSecondPostMarkConversation");
+    }
+
+    #endregion
+
+
+    #region SpecialEvents
+
+    private class FadeOutEvent : Conversation.DialogueEvent
+    {
+        public int duration;
+        public bool fadeIn;
+
+        public FadeOutEvent(Conversation owner, int initialWait, int duration, bool fadeIn = false) : base(owner, initialWait)
+        {
+            this.duration = duration;
+            this.fadeIn = fadeIn;
+        }
+
+        public override void Activate()
+        {
+            base.Activate();
+
+            try
+            {
+                Room room = null;
+                if (owner is SLOracleBehaviorHasMark.MoonConversation moonConv)
+                    room = moonConv.myBehavior.oracle.room;
+                else if (owner is SSOracleBehavior.PebblesConversation pebbConv)
+                    room = pebbConv.convBehav.oracle.room;
+
+                if (room == null)
+                    Error("Could not find room for fade out event!!!");
+                else
+                    room.AddObject(new FadeOut(room, Color.black, duration, fadeIn));
+            } catch (Exception ex) { Error(ex); }
+        }
+
+        public override bool IsOver => owner == null || age > initialWait + duration;
+    }
+
+    /**
+     * TODO: MAKE THIS A SEPARATE FILE FOR ENDINGS INSTEAD OF RANDOMLY ADDING IT IN HERE
+     */
+    private enum CustomEnding
+    {
+        SpearmasterMoon,
+        FutureMoon
+    }
+
+    private class EndGameEvent : Conversation.DialogueEvent
+    {
+        public CustomEnding ending;
+
+        public EndGameEvent(Conversation owner, int initialWait, CustomEnding ending) : base(owner, initialWait)
+        {
+            this.ending = ending;
+        }
+
+        public override void Activate()
+        {
+            base.Activate();
+
+            Debug("Initiating custom ending " + ending);
+
+            try
+            {
+                switch(ending)
+                {
+                    case CustomEnding.SpearmasterMoon:
+                        var c = owner as SLOracleBehaviorHasMark.MoonConversation;
+                        var g = c.myBehavior.oracle.room.game;
+
+                        g.manager.statsAfterCredits = true;
+
+                        //alter savedata
+                        //g.rainWorld.progression.miscProgressionData.
+
+                        g.GetStorySession.saveState.skipNextCycleFoodDrain = true;
+                        g.AppendCycleToStatisticsForPlayers();
+                        //RainWorldGame.ForceSaveNewDenLocation(g, "DM_AI", true); //vanilla endings set last bool false; maybe true will save the slugpup?
+                        //try saving just like in a shelter?
+                        g.GetStorySession.saveState.denPosition = "DM_AI";
+                        g.GetStorySession.saveState.SessionEnded(g, true, false);
+
+                        g.manager.nextSlideshow = WatcherEnums.SlideShowID.EndingSpinningTop;
+                        g.manager.RequestMainProcessSwitch(ProcessManager.ProcessID.SlideShow);
+
+                        break;
+                    default:
+                        Error("ENDING NOT IMPLEMENTED YET!!!");
+                        break;
+                }
+            } catch (Exception ex) { Error(ex); }
+        }
+
+        public override bool IsOver => owner == null || age > initialWait; //if this isn't here, initialWait doesn't work!
+    }
+
+    #endregion
 
 
     private static void Debug(object obj) => Plugin.PublicLogger.LogDebug(obj);

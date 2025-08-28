@@ -29,11 +29,19 @@
 		<ItemGroup>
 			<PearlAchievementFolder Include="ProtectorCampaign\achievements\LZC_Protector_GivePearl\*" />
 		</ItemGroup>
+		<ItemGroup>
+			<GrabNeuronAchievementFolder Include="ProtectorCampaign\achievements\LZC_Protector_GrabNeuron\*" />
+		</ItemGroup>
+		<ItemGroup>
+			<AbandonSlugpupAchievementFolder Include="ProtectorCampaign\achievements\LZC_Protector_AbandonSlugpup\*" />
+		</ItemGroup>
 		<Copy SourceFiles="@(OutputFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign" />
 		<Copy SourceFiles="@(SlugbaseFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\slugbase" />
 		<Copy SourceFiles="@(ScenesFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\slugbase\scenes" />
 		<Copy SourceFiles="@(SlugcatWhiteFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\slugbase\scenes\slugcat - white" />
 		<Copy SourceFiles="@(PearlAchievementFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\achievements\LZC_Protector_GivePearl" />
+		<Copy SourceFiles="@(GrabNeuronAchievementFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\achievements\LZC_Protector_GrabNeuron" />
+		<Copy SourceFiles="@(AbandonSlugpupAchievementFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\achievements\LZC_Protector_AbandonSlugpup" />
 		<Copy SourceFiles="@(BuildFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\plugins" />
 	</Target>
 

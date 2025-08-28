@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ProtectorCampaign;
 
-public partial class Plugin
+public static class Constants
 {
     public const string SAVE_KEY_HEALTH = "LZC_Protector_Health";
     public const int MIN_HEALTH = -20;
@@ -21,6 +21,7 @@ public partial class Plugin
     public const float SKIPPED_WARP_OVERRIDE_CHANCE = 1.5f;
     public const float MEET_MOON_CHANCE_INCREASE = 0.5f;
     public const float WARP_CHANCE_PER_SECOND = 1f / 60f / 5f; //5 minutes on average for warp
+    //public const float MAX_WARP_CHANCE = 1;
 
     public const string SAVE_KEY_SLUGPUP_ID = "LZC_Protector_Slugpup_ID";
     public const string SAVE_KEY_PUP_REQUIRED = "LZC_Protector_Slugpup_Required";
@@ -28,10 +29,14 @@ public partial class Plugin
     public const string SAVE_KEY_WARP_CHANCE = "LZC_Protector_Warp_Chance";
     public const string SAVE_KEY_SKIPPED_WARP = "LZC_Protector_Skipped_Warp"; //deathPersistant save data
     public const string SAVE_KEY_WARPS_SPAWNED = "LZC_Protector_Warps_Spawned";
-    //public const float MAX_WARP_CHANCE = 1;
+
+    public const string SAVE_KEY_ABANDONS = "LZC_Protector_Abandons";
+    public const string SAVE_KEY_HUNTER_NEURON = "LZC_Protector_Hunter_Neuron";
+
+    public const string SAVE_KEY_OE_OPEN = "LZC_Protector_OE_Open";
 
         //used for the fake passage
-    private const string Protector_Health_String = "LZC_Protector_Health";
+    public const string Protector_Health_String = "LZC_Protector_Health";
 
     //iterators
     //public const string SAVE_KEY_PEBBLES_CONVS = "LZC_Protector_SS_Convs";

@@ -9,6 +9,8 @@ using SlugBase.SaveData;
 using MonoMod.RuntimeDetour;
 using MoreSlugcats;
 using Menu;
+using static ProtectorCampaign.Constants;
+using RWCustom;
 
 #pragma warning disable CS0618
 
@@ -82,13 +84,17 @@ public partial class Plugin : BaseUnityPlugin
 
             On.Watcher.WarpPoint.ProvideAir -= PupTracker.WarpPoint_ProvideAir;
 
-            On.RoomSettings.ctor_Room_string_Region_bool_bool_Timeline_RainWorldGame -= RoomSettings_ctor_Room_string_Region_bool_bool_Timeline_RainWorldGame;
+            On.RoomSettings.ctor_Room_string_Region_bool_bool_Timeline_RainWorldGame -= WorldChanges.RoomSettings_ctor;
+            On.Room.Loaded -= WorldChanges.Room_Loaded;
+            On.Player.SlugcatGrab -= WorldChanges.Player_SlugcatGrab;
+            On.RegionGate.customOEGateRequirements -= WorldChanges.RegionGate_customOEGateRequirements;
 
             //On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues -= Conversations.WorldLoader_ctor;
             On.SSOracleBehavior.PebblesConversation.AddEvents -= Conversations.PebblesConversation_AddEvents;
             On.SLOracleBehaviorHasMark.MoonConversation.AddEvents -= Conversations.MoonConversation_AddEvents;
             On.SSOracleBehavior.SeePlayer -= Conversations.SSOracleBehavior_SeePlayer;
             On.SLOracleBehaviorHasMark.InitateConversation -= Conversations.SLOracleBehaviorHasMark_InitateConversation;
+            On.SLOracleBehaviorHasMark.GrabObject -= Conversations.SLOracleBehaviorHasMark_GrabObject;
 
             On.Player.NPCStats.ctor -= PupTracker.NPCStats_ctor;
             On.ShelterDoor.DoorClosed -= PupTracker.ShelterDoor_DoorClosed;
@@ -144,7 +150,10 @@ public partial class Plugin : BaseUnityPlugin
             On.Watcher.WarpPoint.ProvideAir += PupTracker.WarpPoint_ProvideAir;
 
             //World changes
-            On.RoomSettings.ctor_Room_string_Region_bool_bool_Timeline_RainWorldGame += RoomSettings_ctor_Room_string_Region_bool_bool_Timeline_RainWorldGame;
+            On.RoomSettings.ctor_Room_string_Region_bool_bool_Timeline_RainWorldGame += WorldChanges.RoomSettings_ctor;
+            On.Room.Loaded += WorldChanges.Room_Loaded;
+            On.Player.SlugcatGrab += WorldChanges.Player_SlugcatGrab;
+            On.RegionGate.customOEGateRequirements += WorldChanges.RegionGate_customOEGateRequirements;
 
             //conversations
             //On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues += Conversations.WorldLoader_ctor;
@@ -153,6 +162,7 @@ public partial class Plugin : BaseUnityPlugin
             On.SLOracleBehaviorHasMark.MoonConversation.AddEvents += Conversations.MoonConversation_AddEvents;
             On.SSOracleBehavior.SeePlayer += Conversations.SSOracleBehavior_SeePlayer;
             On.SLOracleBehaviorHasMark.InitateConversation += Conversations.SLOracleBehaviorHasMark_InitateConversation;
+            On.SLOracleBehaviorHasMark.GrabObject += Conversations.SLOracleBehaviorHasMark_GrabObject;
 
             //slugpup hooks
             On.Player.NPCStats.ctor += PupTracker.NPCStats_ctor;
@@ -161,6 +171,7 @@ public partial class Plugin : BaseUnityPlugin
 
             //test hooks
             On.Player.SwallowObject += Player_SwallowObject;
+            On.Menu.SlugcatSelectMenu.SlugcatPageContinue.ctor += SlugcatPageContinue_ctor;
 
             ProtectorName = new("LZC_Protector");
 
@@ -205,6 +216,22 @@ public partial class Plugin : BaseUnityPlugin
         }
     }
 
+    //Make menu show timeline
+    private void SlugcatPageContinue_ctor(On.Menu.SlugcatSelectMenu.SlugcatPageContinue.orig_ctor orig, SlugcatSelectMenu.SlugcatPageContinue self, Menu.Menu menu, MenuObject owner, int pageIndex, SlugcatStats.Name slugcatNumber)
+    {
+        orig(self, menu, owner, pageIndex, slugcatNumber);
+
+        try
+        {
+            if (slugcatNumber == ProtectorName)
+            {
+                //VERY expensive operation, but get the save state
+                var saveState = Custom.rainWorld.progression.GetOrInitiateSaveState(slugcatNumber, null, menu.manager.menuSetup, false);
+                self.regionLabel.text = SlugcatStats.getSlugcatName(new(saveState.currentTimelinePosition.value)) + " - " + self.regionLabel.text;
+            }
+        } catch (Exception ex) { Logger.LogError(ex); }
+    }
+
     #endregion
 
     #region Startup
@@ -216,12 +243,17 @@ public partial class Plugin : BaseUnityPlugin
             //detect whether it's a protector campaign
             IsProtectorCampaign = manager.rainWorld.progression.PlayingAsSlugcat == ProtectorName;
             Logger.LogDebug("IsProtectorCampaign: " + IsProtectorCampaign);
+            PupTracker.ShelterDoorClosed = false;
         } catch (Exception ex) { Logger.LogError(ex); IsProtectorCampaign = false; }
 
         orig(self, manager);
 
         try
         {
+            //double-check it is a story session
+            if (!self.IsStorySession)
+                IsProtectorCampaign = false;
+
             //setup pup tracker
             if (IsProtectorCampaign)
             {

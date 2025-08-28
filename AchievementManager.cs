@@ -11,8 +11,10 @@ namespace ProtectorCampaign;
 public static class AchievementManager
 {
     private const string GivePearlID = "LZC_Protector_GivePearl";
+    private const string GrabNeuronID = "LZC_Protector_GrabNeuron";
+    private const string AbandonSlugpupID = "LZC_Protector_AbandonSlugpup";
 
-    private static string[] ALL_ACHIEVEMENTS => new string[] { GivePearlID };
+    private static string[] ALL_ACHIEVEMENTS => new string[] { GivePearlID, GrabNeuronID, AbandonSlugpupID };
 
     public static void ClearAllAchievements()
     {
@@ -31,21 +33,26 @@ public static class AchievementManager
         catch (Exception ex) { Error(ex); }
     }
 
-    public static void GavePearlToMoon()
+    private static void TryGrantAchievement(string ID)
     {
         try
         {
             var data = Custom.rainWorld.progression.miscProgressionData.GetSlugBaseData();
-            if (!data.TryGet(GivePearlID, out bool met) || !met)
+            if (!data.TryGet(ID, out bool met) || !met)
             {
-                FakeAchievementCompat.ShowAchievement(GivePearlID);
-                data.Set(GivePearlID, true);
-                Debug("Showed GivePearl achievement!");
+                FakeAchievementCompat.ShowAchievement(ID);
+                data.Set(ID, true);
+                Debug($"Showed {ID} achievement!");
             }
             else
-                Debug("Already showed GivePearl achievement.");
-        } catch (Exception ex) { Error(ex); }
+                Debug($"Already showed {ID} achievement.");
+        }
+        catch (Exception ex) { Error(ex); }
     }
+
+    public static void GavePearlToMoon() => TryGrantAchievement(GivePearlID);
+    public static void GrabbedHunterNeuron() => TryGrantAchievement(GrabNeuronID);
+    public static void AbandonSlugpup() => TryGrantAchievement(AbandonSlugpupID);
 
 
     private static void Debug(object obj) => Plugin.PublicLogger.LogDebug(obj);
