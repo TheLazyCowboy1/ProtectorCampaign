@@ -44,4 +44,5 @@ public static class Constants
     public const string SAVE_PREFIX_PEBBLES_DATA = "LZC_Protector_SSData_";
     public const string SAVE_PREFIX_MOON_STATE = "LZC_Protector_SLState_";
     public const string MOON_SAVE_KEY_READ_PEARL = "LZC_Protector_Read_Pearl";
+    public const string MOON_SAVE_KEY_DM_GOT_NEURON = "LZC_Protector_DM_Got_Neuron";
 }

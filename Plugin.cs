@@ -31,6 +31,8 @@ public partial class Plugin : BaseUnityPlugin
 
     //TODO: stuff
 
+    public static Plugin Instance;
+
     public static ConfigOptions Options;
     public static ManualLogSource PublicLogger;
 
@@ -42,6 +44,7 @@ public partial class Plugin : BaseUnityPlugin
     {
         try
         {
+            Instance = this;
             PublicLogger = Logger;
             Options = new ConfigOptions();
         }
@@ -93,12 +96,18 @@ public partial class Plugin : BaseUnityPlugin
             On.SSOracleBehavior.PebblesConversation.AddEvents -= Conversations.PebblesConversation_AddEvents;
             On.SLOracleBehaviorHasMark.MoonConversation.AddEvents -= Conversations.MoonConversation_AddEvents;
             On.SSOracleBehavior.SeePlayer -= Conversations.SSOracleBehavior_SeePlayer;
+            On.SSOracleBehavior.SSSleepoverBehavior.ctor -= Conversations.SSSleepoverBehavior_ctor;
             On.SLOracleBehaviorHasMark.InitateConversation -= Conversations.SLOracleBehaviorHasMark_InitateConversation;
             On.SLOracleBehaviorHasMark.GrabObject -= Conversations.SLOracleBehaviorHasMark_GrabObject;
 
+            On.RainWorldGame.SpawnCritters -= PupTracker.RainWorldGame_SpawnCritters;
             On.Player.NPCStats.ctor -= PupTracker.NPCStats_ctor;
             On.ShelterDoor.DoorClosed -= PupTracker.ShelterDoor_DoorClosed;
             On.Player.Update -= PupTracker.Player_Update;
+
+            On.OverseersWorldAI.DirectionFinder.StoryRegionPrioritys -= OverseerChanges.DirectionFinder_StoryRegionPrioritys;
+            On.OverseersWorldAI.DirectionFinder.StoryRoomInRegion -= OverseerChanges.DirectionFinder_StoryRoomInRegion;
+            On.WorldLoader.OverseerSpawnConditions -= OverseerChanges.WorldLoader_OverseerSpawnConditions;
 
             IsInit = false;
         }
@@ -161,13 +170,20 @@ public partial class Plugin : BaseUnityPlugin
             On.SSOracleBehavior.PebblesConversation.AddEvents += Conversations.PebblesConversation_AddEvents;
             On.SLOracleBehaviorHasMark.MoonConversation.AddEvents += Conversations.MoonConversation_AddEvents;
             On.SSOracleBehavior.SeePlayer += Conversations.SSOracleBehavior_SeePlayer;
+            On.SSOracleBehavior.SSSleepoverBehavior.ctor += Conversations.SSSleepoverBehavior_ctor;
             On.SLOracleBehaviorHasMark.InitateConversation += Conversations.SLOracleBehaviorHasMark_InitateConversation;
             On.SLOracleBehaviorHasMark.GrabObject += Conversations.SLOracleBehaviorHasMark_GrabObject;
 
             //slugpup hooks
+            On.RainWorldGame.SpawnCritters += PupTracker.RainWorldGame_SpawnCritters;
             On.Player.NPCStats.ctor += PupTracker.NPCStats_ctor;
             On.ShelterDoor.DoorClosed += PupTracker.ShelterDoor_DoorClosed;
             On.Player.Update += PupTracker.Player_Update;
+
+            //overseer hooks
+            On.OverseersWorldAI.DirectionFinder.StoryRegionPrioritys += OverseerChanges.DirectionFinder_StoryRegionPrioritys;
+            On.OverseersWorldAI.DirectionFinder.StoryRoomInRegion += OverseerChanges.DirectionFinder_StoryRoomInRegion;
+            On.WorldLoader.OverseerSpawnConditions += OverseerChanges.WorldLoader_OverseerSpawnConditions;
 
             //test hooks
             On.Player.SwallowObject += Player_SwallowObject;
@@ -213,6 +229,8 @@ public partial class Plugin : BaseUnityPlugin
         {
             PupTracker.WarpChance += 1f;
             Logger.LogDebug("WarpChance: " + PupTracker.WarpChance);
+
+            PupTracker.MaybeSpawnSlugpup(self, self.room.world);
         }
     }
 
@@ -227,7 +245,7 @@ public partial class Plugin : BaseUnityPlugin
             {
                 //VERY expensive operation, but get the save state
                 var saveState = Custom.rainWorld.progression.GetOrInitiateSaveState(slugcatNumber, null, menu.manager.menuSetup, false);
-                self.regionLabel.text = SlugcatStats.getSlugcatName(new(saveState.currentTimelinePosition.value)) + " - " + self.regionLabel.text;
+                self.regionLabel.text = SlugcatStats.getSlugcatName(TimelineToSlugcat(saveState.currentTimelinePosition)) + " - " + self.regionLabel.text;
             }
         } catch (Exception ex) { Logger.LogError(ex); }
     }
@@ -277,18 +295,22 @@ public partial class Plugin : BaseUnityPlugin
             {
                 SetPlayerStats(self);
             }
-            if (IsProtectorCampaign && self.playerState.playerNumber == 0 && world.game.Players[0] == abstractCreature && world.game.IsStorySession
-                && self.room.abstractRoom.name == "SS_AI" && world.game.GetStorySession.saveState.cycleNumber == 0)
+            if (IsProtectorCampaign && self.playerState.playerNumber == 0 && world.game.Players[0] == abstractCreature && world.game.IsStorySession)
             {
-                //spawn slugpup
-                StartCoroutine(PupTracker.TrySpawnSlugpup(self, world));
-                //PupTracker.TrySpawnSlugpup(self, world);
+                if (self.room.abstractRoom.name == "SS_AI" && world.game.GetStorySession.saveState.cycleNumber == 0) //start of the game
+                {
+                    //spawn slugpup
+                    PupTracker.TrySpawnSlugpup(this, self, world);
+                    //PupTracker.TrySpawnSlugpup(self, world);
 
-                //stomach pearl
-                self.objectInStomach = new DataPearl.AbstractDataPearl(world, AbstractPhysicalObject.AbstractObjectType.DataPearl, null,
-                    new(self.room.abstractRoom.index, -1, -1, 0), world.game.GetNewID(), -1,
-                    -1, null, DataPearl.AbstractDataPearl.DataPearlType.Red_stomach);
-                Logger.LogDebug("Pearl in stomach: " + self.objectInStomach);
+                    //stomach pearl
+                    self.objectInStomach = new DataPearl.AbstractDataPearl(world, AbstractPhysicalObject.AbstractObjectType.DataPearl, null,
+                        new(self.room.abstractRoom.index, -1, -1, 0), world.game.GetNewID(), -1,
+                        -1, null, DataPearl.AbstractDataPearl.DataPearlType.Red_stomach);
+                    Logger.LogDebug("Pearl in stomach: " + self.objectInStomach);
+                }
+                //else //later in the game
+                    //PupTracker.MaybeSpawnSlugpup(this, self, world); //happens much too late!
             }
         }
         catch (Exception ex) { Logger.LogError(ex); }
@@ -535,6 +557,23 @@ public partial class Plugin : BaseUnityPlugin
         orig(self);
     }
 
+    #endregion
+
+    #region Tools
+    /// <summary>
+    /// Returns the first Slugcat that uses this timeline, or just directly converts the timeline as a last resort.
+    /// </summary>
+    /// <param name="timeline">The timeline to convert to a SlugcatStats.Name</param>
+    /// <returns></returns>
+    public static SlugcatStats.Name TimelineToSlugcat(SlugcatStats.Timeline timeline)
+    {
+        foreach (string name in SlugcatStats.Name.values.entries)
+        {
+            if (SlugcatStats.SlugcatToTimeline(new(name)) == timeline)
+                return new(name);
+        }
+        return new(timeline.value);
+    }
     #endregion
 
 }

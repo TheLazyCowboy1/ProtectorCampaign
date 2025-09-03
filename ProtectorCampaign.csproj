@@ -35,6 +35,12 @@
 		<ItemGroup>
 			<AbandonSlugpupAchievementFolder Include="ProtectorCampaign\achievements\LZC_Protector_AbandonSlugpup\*" />
 		</ItemGroup>
+		<ItemGroup>
+			<PupAtDMMoonAchievementFolder Include="ProtectorCampaign\achievements\LZC_Protector_PupAtDMMoon\*" />
+		</ItemGroup>
+		<ItemGroup>
+			<GiveNeuronDMMoonAchievementFolder Include="ProtectorCampaign\achievements\LZC_Protector_GiveNeuronDMMoon\*" />
+		</ItemGroup>
 		<Copy SourceFiles="@(OutputFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign" />
 		<Copy SourceFiles="@(SlugbaseFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\slugbase" />
 		<Copy SourceFiles="@(ScenesFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\slugbase\scenes" />
@@ -42,6 +48,8 @@
 		<Copy SourceFiles="@(PearlAchievementFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\achievements\LZC_Protector_GivePearl" />
 		<Copy SourceFiles="@(GrabNeuronAchievementFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\achievements\LZC_Protector_GrabNeuron" />
 		<Copy SourceFiles="@(AbandonSlugpupAchievementFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\achievements\LZC_Protector_AbandonSlugpup" />
+		<Copy SourceFiles="@(PupAtDMMoonAchievementFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\achievements\LZC_Protector_PupAtDMMoon" />
+		<Copy SourceFiles="@(GiveNeuronDMMoonAchievementFolder)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\achievements\LZC_Protector_GiveNeuronDMMoon" />
 		<Copy SourceFiles="@(BuildFiles)" DestinationFolder="C:\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\StreamingAssets\mods\ProtectorCampaign\plugins" />
 	</Target>
 

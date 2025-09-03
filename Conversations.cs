@@ -54,7 +54,7 @@ public static class Conversations
                     miscSave.SSaiThrowOuts = pebData.Length > 1 ? pebData[1] : 0;
                     miscSave.cyclesSinceSSai = pebData.Length > 2 ? pebData[2] : 0;
 
-                    miscSave.SLOracleState.ForceResetState(new(newTimeline.value));
+                    miscSave.SLOracleState.ForceResetState(Plugin.TimelineToSlugcat(newTimeline));
                     if (slugData.TryGet(SAVE_PREFIX_MOON_STATE + newTimeline.value, out string moonState))
                     {
                         miscSave.SLOracleState.FromString(moonState);
@@ -79,21 +79,95 @@ public static class Conversations
                 var timeline = storySession.saveState.currentTimelinePosition;
 
                 //So far, only override behavior for Gourmand timeline. Treat every other timeline like Survivor's
-                //also override for Spearmaster LttM
+                //also override for Spearmaster LttM for SUBSEQUENT VISITS ONLY
                 if (timeline == SlugcatStats.Timeline.Gourmand
-                    || (timeline == SlugcatStats.Timeline.Spear && self.oracle.ID == MoreSlugcatsEnums.OracleID.DM))
+                    || (timeline == SlugcatStats.Timeline.Spear && self.oracle.ID == MoreSlugcatsEnums.OracleID.DM && self.oracle.room.game.GetStorySession.saveState.miscWorldSaveData.SLOracleState.playerEncountersWithMark > 0))
                 {
                     var tempSaveNum = storySession.saveState.saveStateNumber;
-                    storySession.saveStateNumber = new(timeline.value); //roughly convert timeline to slugcat; should work for vanilla/Downpour scugs
+                    storySession.saveStateNumber = Plugin.TimelineToSlugcat(timeline);
                     orig(self);
                     storySession.saveStateNumber = tempSaveNum;
                     Debug("Initiating Pebbles behavior for " + timeline);
+
                     return;
                 }
             }
         } catch (Exception ex) { Error(ex); }
         orig(self);
+
+        if (self.oracle.ID == MoreSlugcatsEnums.OracleID.DM) //react to player if meeting DM for the first time
+            self.SlugcatEnterRoomReaction();
     }
+
+
+    //Change reaction text
+    public static void SSSleepoverBehavior_ctor(On.SSOracleBehavior.SSSleepoverBehavior.orig_ctor orig, SSOracleBehavior.SSSleepoverBehavior self, SSOracleBehavior owner)
+    {
+        orig(self, owner);
+
+        try
+        {
+            if (Plugin.IsProtectorCampaign && owner.oracle.ID == MoreSlugcatsEnums.OracleID.DM)
+            {
+                if (owner.currSubBehavior.ID == SSOracleBehavior.SubBehavior.SubBehavID.GetNeuron
+                    || owner.currSubBehavior.ID == SSOracleBehavior.SubBehavior.SubBehavID.MeetWhite)
+                {
+                    Debug("Preventing Moon from greeting the player when switching to slumber party.");
+                    self.dialogBox.Interrupt("", -200); //negatively short text box. hopefully unnoticeable...?
+                    self.dialogBox.lingerCounter = 200; //lie and say the box has been open for 5 seconds
+                    return;
+                }
+
+                var slState = owner.oracle.room.world.game.GetStorySession.saveState.miscWorldSaveData.SLOracleState;
+
+                /*if (slState.playerEncountersWithMark <= 0)
+                {
+                    self.dialogBox.Interrupt("...", 0); //get rid of whatever message was shown
+
+                    //initiate interaction with player, including turning on gravity and stuff
+                    self.owner.getToWorking = 0f;
+                    //self.gravOn = true;
+                    self.firstMetOnThisCycle = true;
+                    self.owner.SlugcatEnterRoomReaction();
+                    self.owner.voice = self.oracle.room.PlaySound(SoundID.SL_AI_Talk_4, self.oracle.firstChunk);
+                    self.owner.voice.requireActiveUpkeep = true;
+                    self.owner.LockShortcuts();
+
+                    //self.owner.InitateConversation(Conversation.ID.Pebbles_White, self);
+                    self.owner.conversation?.Destroy();
+                    self.owner.conversation = null;
+
+                    //self.owner.NewAction(MoreSlugcatsEnums.SSOracleBehaviorAction.Moon_AfterGiveMark); //causes an infinite loop, lol
+                    //self.owner.action = MoreSlugcatsEnums.SSOracleBehaviorAction.Moon_AfterGiveMark;
+                    //self.owner.inActionCounter = 0;
+                }
+                else */
+                if (slState.unrecognizedSaveStrings.Contains(MOON_SAVE_KEY_READ_PEARL))
+                {
+                    int num = slState.playerEncountersWithMark;
+                    if (num > 3) num = UnityEngine.Random.Range(0, 3);
+                    switch (num)
+                    {
+                        case 1:
+                            self.dialogBox.Interrupt("Hello again, little creature!", 0);
+                            break;
+                        case 2:
+                            self.dialogBox.Interrupt("Back again? Can I help you with anything, little one?", 0);
+                            break;
+                        default:
+                            self.dialogBox.Interrupt("Hello! It's good to see you again, little creature.", 0);
+                            break;
+                    }
+                }
+
+                slState.playerEncounters++;
+                slState.playerEncountersWithMark++;
+            }
+        } catch (Exception ex) { Error(ex); }
+
+        //orig(self, owner);
+    }
+
 
     //Make Moon talk according to timeline, not slugcat
     public static void SLOracleBehaviorHasMark_InitateConversation(On.SLOracleBehaviorHasMark.orig_InitateConversation orig, SLOracleBehaviorHasMark self)
@@ -104,7 +178,7 @@ public static class Conversations
             {
                 var storySession = self.oracle.room.game.GetStorySession;
                 var tempSaveNum = storySession.saveState.saveStateNumber;
-                storySession.saveStateNumber = new(storySession.saveState.currentTimelinePosition.value);
+                storySession.saveStateNumber = Plugin.TimelineToSlugcat(storySession.saveState.currentTimelinePosition);
                 orig(self);
                 storySession.saveStateNumber = tempSaveNum;
                 Debug("Initiating Moon conversation for " + storySession.saveState.currentTimelinePosition);
@@ -112,6 +186,7 @@ public static class Conversations
             }
         }
         catch (Exception ex) { Error(ex); }
+
         orig(self);
     }
 
@@ -141,7 +216,17 @@ public static class Conversations
             //throw new NotImplementedException();
             if (Plugin.IsProtectorCampaign)
             {
-                if (self.id == Conversation.ID.Pebbles_White)
+                if (self.id == MoreSlugcatsEnums.ConversationID.MoonGiveMarkAfter) //SHOULD NEVER BE TRIGGERED
+                {
+                    //Moon Spearmaster behavior
+                    if (self.owner.oracle.ID == MoreSlugcatsEnums.OracleID.DM)
+                    {
+                        MoonMeetSpear(self);
+
+                        return;
+                    }
+                }
+                else if (self.id == Conversation.ID.Pebbles_White)
                 {
                     var timeline = self.owner.oracle.room.game.TimelinePoint;
 
@@ -301,6 +386,7 @@ public static class Conversations
         //Pebbles is stressed and unusually abrupt with his conversation
 
         self.events.Add(new Conversation.TextEvent(self, 100, self.Translate("...is this reaching you?"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Im busy so get out"), 0));
 
         Debug("Set up custom conversation replacing Pebbles_White");
     }
@@ -309,21 +395,27 @@ public static class Conversations
     {
         //Hehe funny joke Pebbles
         //Probably make him say some "meta" stuff or explain the lore or something funny like that
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Why have you gone through all this pain? You're weird."), 0));
     }
 
     private static void PebblesDiscussNeuronEarly(SSOracleBehavior.PebblesConversation self)
     {
         //Slag keys? Funny. Why do we have them, though? They seemingly serve no purpose.
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("what on earth is this? Why would I want slag keys?"), 0));
     }
 
     private static void PebblesMeetRed(SSOracleBehavior.PebblesConversation self)
     {
         //Significantly calmer than for Spearmaster
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("hi there I don't like you much but we kinda chill ig"), 0));
     }
 
     private static void PebblesDiscussNeuron(SSOracleBehavior.PebblesConversation self)
     {
         //Basically same as for Hunter, but omit the talk about Hunter's sickness
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("yo sup"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("is this ur brain?"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("its rly small. Are you stupid?"), 0));
     }
 
     private static void PebblesMeetGourmand(SSOracleBehavior.PebblesConversation self)
@@ -367,6 +459,9 @@ public static class Conversations
     private static void PebblesMeetYellow(SSOracleBehavior.PebblesConversation self)
     {
         //"Why are you back here? I'm not a homeless shelter for slugcats."
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("guess what?"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("im not a homeless shelter for slugcats"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("get out"), 0));
     }
 
     #endregion
@@ -378,12 +473,54 @@ public static class Conversations
     //withOUT neuron
     private static void MoonMeetSpear(SSOracleBehavior.PebblesConversation self)
     {
+        //player encountered Moon
+        var slState = self.owner.oracle.room.game.GetStorySession.saveState.miscWorldSaveData.SLOracleState;
+        slState.playerEncounters++;
+        slState.playerEncountersWithMark++;
+
         //Pretty basic greeting, I assume
+        self.events.Add(new Conversation.TextEvent(self, 20, self.Translate("Greetings, strange creature!"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Your body shows marks of being modified. I can only assume that it was done by Five Pebbles.<LINE>Is this what he has been consuming so much water for? To create you? HA!"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("..."), -20));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("My apologies, little creature. My scorn was unjustified."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Due to the excessive usage of water by my neighbor, I must hurry to protect my systems from total failure.<LINE>As a result, I do not have the luxury to examine you closely."), 0));
+        self.events.Add(new Conversation.SpecialEvent(self, 0, "panic"));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I ca... c-c-c..."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 60, self.Translate("I'm sorry, but I cannot help you at the moment."), 0));
+        if (self.convBehav.owner.CheckSlugpupsInRoom())
+        {
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("But you are welcome to stay nearby. I will tend to you and your little one as I have time to do so."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I must work, but in the meantime, best of luck to you both."), 20));
+        }
+        else
+        {
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("But you are welcome to stay nearby. I will tend to you as I have time to do so."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I must work, but in the meantime, best of luck to you."), 20));
+        }
+
+        //switch to slumber party behavior instead of throwing the player out
+        self.events.Add(new LambdaEvent(self, 0, () => self.owner.NewAction(MoreSlugcatsEnums.SSOracleBehaviorAction.Moon_SlumberParty)));
+
+        Debug("MoonMetSpear conversation replacing " + self.id);
     }
 
     private static void MoonMeetSpearWithNeuron(SSOracleBehavior.PebblesConversation self)
     {
         //Confused about neuron's purpose
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("What is this?"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("Remarkable! A neuron encoding - how many? Ah - Sixteen slag reset keys!<LINE>Wherever did you find such a thing?"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Most of the methods encoded here are rather extreme, even for my circumstances.<LINE>Regardless, I will copy these keys for reference in case of an emergency.<LINE>Actually, I will implement all of these in a backup protocall immediately!"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 80, self.Translate("...Thank you for this, little creature! I never dared to hope for assistance amidst this dire situation, yet a strange animal came to help me.<LINE>Did someone send you? Did you find this somewhere? Ah, I wish I knew! But I greatly appreciate your service nonetheless, little one!<LINE>...although, I deeply hope that your help is not needed. These slag resets would not be ideal."), 20));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I do not know how to repay you for this. I hope that I can help you if you need anything of your own.<LINE>Please, stay here and rest a while. I appreciate the company."), 0));
+
+        //switch to slumber party behavior instead of "politely" throwing the player out
+        self.events.Add(new LambdaEvent(self, 0, () => self.owner.NewAction(MoreSlugcatsEnums.SSOracleBehaviorAction.Moon_SlumberParty)));
+
+        var slState = self.convBehav.oracle.room.game.GetStorySession.saveState.miscWorldSaveData.SLOracleState;
+        if (!slState.unrecognizedSaveStrings.Contains(MOON_SAVE_KEY_DM_GOT_NEURON))
+            slState.unrecognizedSaveStrings.Add(MOON_SAVE_KEY_DM_GOT_NEURON); //for reaction to the pearl
+        
+        Debug("MoonMetSpearWithNeuron conversation replacing " + self.id);
     }
 
     private static void MoonGivenStomachPearl(SLOracleBehaviorHasMark.MoonConversation self)
@@ -391,7 +528,7 @@ public static class Conversations
         //affect like; give achievement; mark as read
         self.State.likesPlayer = Mathf.Max(self.State.likesPlayer, 1f);
         PupTracker.MetMoon(self.myBehavior);
-        AchievementManager.GavePearlToMoon();
+        //AchievementManager.GavePearlToMoon(); //do this within conversation instead
         self.State.unrecognizedSaveStrings.Add(MOON_SAVE_KEY_READ_PEARL); //only mark it as read if we get full dialogue
 
         self.PearlIntro();
@@ -401,10 +538,7 @@ public static class Conversations
 
         if (self.myBehavior.oracle.ID == MoreSlugcatsEnums.OracleID.DM)
         {
-            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("You win!!!"), 0));
-
-            self.events.Add(new FadeOutEvent(self, 0, 80));
-            self.events.Add(new EndGameEvent(self, 10, CustomEnding.SpearmasterMoon));
+            DMMoonPearlEnding(self);
         }
         else //Shoreline Moon!
         {
@@ -416,9 +550,20 @@ public static class Conversations
             self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("In the end, the most I can offer is this (a small comfort - if comfort it can be called):<LINE>Your hardships are a hidden blessing that others desire. Because of your task, you have purpose, freedom, and company.<LINE>Do not lose heart. Cherish your - yes, your - child."), 0)); ;
             self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("In truth, I envy you. If I were in any other state, I would gladly care for this little one."), 10));
             self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("But I trust that you will continue to guard this child, and I trust that you will find peace doing so."), 0));
+            self.events.Add(new AchievementManager.AchievementEvent(self, 0, AchievementManager.GivePearlID)); //give achievement
         }
 
         Debug("Set up custom pearl reading (new with slugpup) replacing Moon_Pearl_Red_stomach");
+    }
+    private static void DMMoonPearlEnding(SLOracleBehaviorHasMark.MoonConversation self)
+    {
+        self.events.Add(new AchievementManager.AchievementEvent(self, 0, AchievementManager.GivePearlID)); //give achievement for the pearl immediately
+        self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("..."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("You Win!"), 0));
+
+        self.events.Add(new AchievementManager.AchievementEvent(self, 0, AchievementManager.PupAtDMMoon)); //give achievement for the ending last
+        self.events.Add(new FadeOutEvent(self, 10, 80));
+        self.events.Add(new EndGameEvent(self, 10, CustomEnding.SpearmasterMoon));
     }
 
     private static void MoonGivenStomachPearlNoPup(SLOracleBehaviorHasMark.MoonConversation self)
@@ -477,6 +622,26 @@ public static class Conversations
 
 
     #region SpecialEvents
+
+    private class LambdaEvent : Conversation.DialogueEvent
+    {
+        Action action;
+
+        public LambdaEvent(Conversation owner, int initialWait, Action action) : base(owner, initialWait)
+        {
+            this.action = action;
+        }
+
+        public override void Activate()
+        {
+            base.Activate();
+
+            try { action(); }
+            catch (Exception ex) { Error(ex); }
+        }
+
+        public override bool IsOver => owner == null || age > initialWait; //if this isn't here, initialWait doesn't work!
+    }
 
     private class FadeOutEvent : Conversation.DialogueEvent
     {
@@ -547,13 +712,16 @@ public static class Conversations
 
                         //alter savedata
                         //g.rainWorld.progression.miscProgressionData.
+                            //the pup is no longer required
+                        g.GetStorySession.saveState.miscWorldSaveData.GetSlugBaseData().Set(SAVE_KEY_PUP_REQUIRED, false);
 
                         g.GetStorySession.saveState.skipNextCycleFoodDrain = true;
                         g.AppendCycleToStatisticsForPlayers();
-                        //RainWorldGame.ForceSaveNewDenLocation(g, "DM_AI", true); //vanilla endings set last bool false; maybe true will save the slugpup?
+                        RainWorldGame.ForceSaveNewDenLocation(g, "DM_AI", true); //vanilla endings set last bool false; maybe true will save the slugpup?
+                            //...or we could just respawn the slugpup manually, lol. Works fine.
                         //try saving just like in a shelter?
-                        g.GetStorySession.saveState.denPosition = "DM_AI";
-                        g.GetStorySession.saveState.SessionEnded(g, true, false);
+                        //g.GetStorySession.saveState.denPosition = "DM_AI";
+                        //g.GetStorySession.saveState.SessionEnded(g, true, false);
 
                         g.manager.nextSlideshow = WatcherEnums.SlideShowID.EndingSpinningTop;
                         g.manager.RequestMainProcessSwitch(ProcessManager.ProcessID.SlideShow);

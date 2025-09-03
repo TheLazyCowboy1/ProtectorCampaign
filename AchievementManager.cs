@@ -10,11 +10,13 @@ namespace ProtectorCampaign;
 
 public static class AchievementManager
 {
-    private const string GivePearlID = "LZC_Protector_GivePearl";
-    private const string GrabNeuronID = "LZC_Protector_GrabNeuron";
-    private const string AbandonSlugpupID = "LZC_Protector_AbandonSlugpup";
+    public const string GivePearlID = "LZC_Protector_GivePearl";
+    public const string GrabNeuronID = "LZC_Protector_GrabNeuron";
+    public const string AbandonSlugpupID = "LZC_Protector_AbandonSlugpup";
+    public const string PupAtDMMoon = "LZC_Protector_PupAtDMMoon";
+    public const string GiveNeuronDMMoon = "LZC_Protector_GiveNeuronDMMoon";
 
-    private static string[] ALL_ACHIEVEMENTS => new string[] { GivePearlID, GrabNeuronID, AbandonSlugpupID };
+    private static string[] ALL_ACHIEVEMENTS => new string[] { GivePearlID, GrabNeuronID, AbandonSlugpupID, PupAtDMMoon, GiveNeuronDMMoon };
 
     public static void ClearAllAchievements()
     {
@@ -53,6 +55,28 @@ public static class AchievementManager
     public static void GavePearlToMoon() => TryGrantAchievement(GivePearlID);
     public static void GrabbedHunterNeuron() => TryGrantAchievement(GrabNeuronID);
     public static void AbandonSlugpup() => TryGrantAchievement(AbandonSlugpupID);
+
+    /// <summary>
+    /// Intended to grant an achievement in the middle or at the end of a conversation.
+    /// </summary>
+    public class AchievementEvent : Conversation.DialogueEvent
+    {
+        string achievementID;
+
+        public AchievementEvent(Conversation owner, int initialWait, string ID) : base(owner, initialWait)
+        {
+            achievementID = ID;
+        }
+
+        public override void Activate()
+        {
+            base.Activate();
+
+            TryGrantAchievement(achievementID);
+        }
+
+        public override bool IsOver => owner == null || age > initialWait; //if this isn't here, initialWait doesn't work!
+    }
 
 
     private static void Debug(object obj) => Plugin.PublicLogger.LogDebug(obj);

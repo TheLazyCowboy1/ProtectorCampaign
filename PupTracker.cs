@@ -17,20 +17,26 @@ public static class PupTracker
     public static float WarpChance = 0;
 
     //changed to a coroutine so we can safely wait for the aimap to generate
-    public static IEnumerator TrySpawnSlugpup(Player player, World world)
+    private static IEnumerator SpawnSlugpupCoroutine(Player player, World world, EntityID? setID = null)
     {
         //try to fix AIMap
-        bool hadToWait = player.room.aimap == null;
-        while (player.room.aimap == null) yield return null;
+        bool hadToWait = player?.room?.aimap == null;
+        while (player?.room != null && player.room.aimap == null) yield return null;
         try
         {
             Debug("Trying to spawn slugpup. Had to wait for AiMap: " + hadToWait);
 
-            var ID = world.game.GetNewID();
-            //save slugpup ID
-            var data = world.game.GetStorySession.saveState.miscWorldSaveData.GetSlugBaseData();
-            data.Set(SAVE_KEY_SLUGPUP_ID, ID);
-            data.Set(SAVE_KEY_PUP_REQUIRED, true);
+            EntityID ID;
+            if (setID == null)
+            {
+                ID = world.game.GetNewID();
+                //save slugpup ID
+                var data = world.game.GetStorySession.saveState.miscWorldSaveData.GetSlugBaseData();
+                data.Set(SAVE_KEY_SLUGPUP_ID, ID);
+                data.Set(SAVE_KEY_PUP_REQUIRED, true);
+            }
+            else
+                ID = setID.Value;
 
             //create slugpup
             Slugpup = new AbstractCreature(world, StaticWorld.GetCreatureTemplate(MoreSlugcatsEnums.CreatureTemplateType.SlugNPC), null, player.abstractPhysicalObject.pos, ID);
@@ -40,15 +46,72 @@ public static class PupTracker
             //realize slugpup
             player.room.abstractRoom.AddEntity(Slugpup);
             Slugpup.RealizeInRoom();
-            Slugpup.realizedCreature.mainBodyChunk.pos = new(300, 300); //tile 15,15
+            if (setID == null)
+                Slugpup.realizedCreature.mainBodyChunk.pos = new(300, 300); //tile 15,15
+            else
+                Slugpup.realizedCreature.mainBodyChunk.pos = player.mainBodyChunk.pos; //spawn on top of player if it's a second spawn
 
             Debug("Spawned slugpup! ID: " + ID);
         } catch (Exception ex) { Error(ex); }
         yield break;
     }
 
+    public static void TrySpawnSlugpup(MonoBehaviour plugin, Player player, World world) => plugin.StartCoroutine(SpawnSlugpupCoroutine(player, world));
+
+    //Spawn the slugpup if it should exist but doesn't
+    public static void MaybeSpawnSlugpup(Player player, World world)
+    {
+        var data = world.game.GetStorySession.saveState.miscWorldSaveData.GetSlugBaseData();
+        if (data.TryGet(SAVE_KEY_SLUGPUP_ID, out EntityID ID)) //there SHOULD be a slugpup
+        {
+            //find the slugpup
+            bool done = false;
+            AbstractCreature crit = null;
+            foreach (var room in world.abstractRooms)
+            {
+                foreach (var ac in room.creatures)
+                {
+                    if (ac.ID == ID)
+                    {
+                        crit = ac;
+                        done = true;
+                        break;
+                    }
+                }
+                if (done) break;
+            }
+
+            if (crit == null)
+            {
+                Debug("MISSING SLUGPUP!!! Trying to spawn a new one...");
+                Plugin.Instance.StartCoroutine(SpawnSlugpupCoroutine(player, world, ID)); //use old ID
+            }
+            else if (crit.creatureTemplate.type != MoreSlugcatsEnums.CreatureTemplateType.SlugNPC)
+            {
+                var newID = world.game.GetNewID();
+                Debug("Another entity has stolen the slugpup's ID. NEW SLUGPUP ID: " + newID);
+                Plugin.Instance.StartCoroutine(SpawnSlugpupCoroutine(player, world, newID)); //get a new ID
+            }
+        }
+    }
+
+    //After all creatures have been loaded into shelters, ensure that we have the slugpup!
+    public static void RainWorldGame_SpawnCritters(On.RainWorldGame.orig_SpawnCritters orig, RainWorldGame self, System.Collections.Generic.List<string> objs, AbstractCreature player)
+    {
+        orig(self, objs, player);
+
+        try
+        {
+            if (Slugpup == null) //only search for pup if it hasn't been realized yet
+                MaybeSpawnSlugpup(player.realizedObject as Player, self.world);
+        } catch (Exception ex) { Error(ex); }
+    }
+
+
     public static void CycleStarted(RainWorldGame game)
     {
+        Slugpup = null; //must re-find slugpup
+
         var saveState = game.GetStorySession.saveState;
         var miscData = saveState.miscWorldSaveData.GetSlugBaseData();
         var persistentData = saveState.deathPersistentSaveData.GetSlugBaseData();
@@ -103,7 +166,11 @@ public static class PupTracker
             {
                 self.EyeColor = 1;
                 self.Dark = true;
+                self.H = 0.6f; //greenish-cyan?
+                self.S = 0.9f;
                 self.L = 0.95f; //how dark = 95%
+                self.Wideness = 0.25f; //bit thinner than average (0.35f)
+                self.Size = 0.5f; //bit bigger than average
 
                 player.npcCharacterStats.lungsFac *= 0.7f; //make them breathe longer, for convenience's sake
 
@@ -127,26 +194,38 @@ public static class PupTracker
             {
                 var saveState = self.room.game.GetStorySession.saveState;
                 var data = saveState.miscWorldSaveData.GetSlugBaseData();
-                if (data.TryGet(SAVE_KEY_PUP_REQUIRED, out bool req) && req && data.TryGet(SAVE_KEY_SLUGPUP_ID, out EntityID ID))
+                if (data.TryGet(SAVE_KEY_SLUGPUP_ID, out EntityID ID)) //there is a slugpup
                 {
+                    //but he's not in the shelter
                     if (!self.room.physicalObjects.Any(l => l.Any(p => p.abstractPhysicalObject.ID == ID && p is Player player && player.playerState.alive)))
                     {
                         Debug("COULD NOT FIND ALIVE SLUGPUP IN SHELTER!!!");
 
-                        var data2 = saveState.deathPersistentSaveData.GetSlugBaseData();
-                        data2.TryGet(SAVE_KEY_ABANDONS, out int abandons);
-                        data2.Set(SAVE_KEY_ABANDONS, abandons + 1); //set abandons higher for next time
+                        if (data.TryGet(SAVE_KEY_PUP_REQUIRED, out bool req) && req) //and the pup is required
+                        {
+                            var data2 = saveState.deathPersistentSaveData.GetSlugBaseData();
+                            data2.TryGet(SAVE_KEY_ABANDONS, out int abandons);
+                            data2.Set(SAVE_KEY_ABANDONS, abandons + 1); //set abandons higher for next time
 
-                        if (abandons > 0) //just go to death screen; no big deal
-                        {
-                            self.room.game.GoToDeathScreen(); //This would be a perfect place to go to a "slugpup dead" dream sequence before going to death screen
+                            if (abandons > 0) //just go to death screen; no big deal
+                            {
+                                self.room.game.GoToDeathScreen(); //This would be a perfect place to go to a "slugpup dead" dream sequence before going to death screen
+                            }
+                            else //shame the player
+                            {
+                                AchievementManager.AbandonSlugpup();
+                                saveState.deathPersistentSaveData.karma = 0; //set karma to minimum
+                                saveState.deathPersistentSaveData.reinforcedKarma = false;
+                                self.room.AddObject(new ShamePlayerCutscene(self.room));
+                            }
+                            return; //DON'T go to win screen!!!
                         }
-                        else //shame the player
+                        else //the pup is NOT required
                         {
-                            AchievementManager.AbandonSlugpup();
-                            self.room.AddObject(new ShamePlayerCutscene(self.room));
+                            //so forget about him. No more slugpups to worry about!!
+                            data.Remove(SAVE_KEY_SLUGPUP_ID);
+                            Debug("Removed slugpup ID from save data. BYE-BYE SLUGPUP!!");
                         }
-                        return;
                     }
                 }
 
@@ -188,7 +267,7 @@ public static class PupTracker
                 return;
             }
 
-            bool inThrone = self.room.world.name.ToUpperInvariant() == "WORA" //Outer Rim
+            bool inThrone = self.room?.world?.name?.ToUpperInvariant() == "WORA" //Outer Rim
                 && THRONE_WARP_ROOMS.Contains(self.room.abstractRoom.name.ToUpperInvariant()) //Throne warp room
                 && self.IsBlacklistedRoomFromDynamicWarpPoints(self.room) == Player.BlackListReason.None; //Can warp
 
@@ -208,7 +287,9 @@ public static class PupTracker
             currentChance *= (inThrone ? 5f : WarpChance) * WARP_CHANCE_PER_SECOND;
             //Debug("CurrentWarpChance: " + currentChance);
 
-            if (UnityEngine.Random.value < currentChance && self.room.warpPoints.Count <= 0)
+            if (UnityEngine.Random.value < currentChance
+                && self.room.warpPoints.Count <= 0
+                && self.IsBlacklistedRoomFromDynamicWarpPoints(self.room) == Player.BlackListReason.None) //don't fail spawning a warp; it pops up a message
             {
                 //spawn a warp!
                 Debug("Trying to spawn a warp!!! Chance of occurring this second: " + currentChance + ". In Throne: " + inThrone);
