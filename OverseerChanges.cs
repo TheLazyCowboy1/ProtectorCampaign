@@ -129,7 +129,7 @@ public static class OverseerChanges
     {
         if (character == Plugin.ProtectorName && self.timelinePosition == SlugcatStats.Timeline.White)
             return true; //always true in Survivor timeline
-        if (Plugin.IsProtectorCampaign)
+        if (Plugin.IsProtectorCampaign && self.timelinePosition != SlugcatStats.Timeline.Watcher) //don't spawn overseers for Watcher; that's weird
             return orig(self, character) || UnityEngine.Random.value < 0.3f; //guarenteed 30% chance of spawning, just in case
 
         return orig(self, character); //otherwise, default to the normal behavior

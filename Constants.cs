@@ -14,13 +14,13 @@ public static class Constants
     public const int FOOD_GOAL = 6;
     public const int STARVE_PENALTY = -10;
 
-    private const float MAX_CYCLES_BEFORE_WARP = 40;
-    public const float STARTING_WARP_CHANCE = -10f / MAX_CYCLES_BEFORE_WARP;
-    public const float POST_WARP_CHANCE = -3f / MAX_CYCLES_BEFORE_WARP;
+    private const float MAX_CYCLES_BEFORE_WARP = 40; //it takes 40 cycles for chance to go from 0 to 1
+    public const float STARTING_WARP_CHANCE = -10f / MAX_CYCLES_BEFORE_WARP; //10 cycles before warp is possible
+    public const float POST_WARP_CHANCE = -5f / MAX_CYCLES_BEFORE_WARP; //5 cycles after a warp before it's possible again
     public const float WARP_CHANCE_INCREASE = 1f / MAX_CYCLES_BEFORE_WARP;
-    public const float SKIPPED_WARP_OVERRIDE_CHANCE = 1.5f;
-    public const float MEET_MOON_CHANCE_INCREASE = 0.5f;
-    public const float WARP_CHANCE_PER_SECOND = 1f / 60f / 5f; //5 minutes on average for warp
+    public const float SKIPPED_WARP_OVERRIDE_CHANCE = 2f; //warp is extremely likely
+    public const float MEET_MOON_WARP_CHANCE_INCREASE = 0.5f;
+    public const float WARP_CHANCE_PER_SECOND = 1f / 60f / 15f; //15 minutes on average for warp (unless pup gets scared)
     //public const float MAX_WARP_CHANCE = 1;
 
     public const string SAVE_KEY_SLUGPUP_ID = "LZC_Protector_Slugpup_ID";

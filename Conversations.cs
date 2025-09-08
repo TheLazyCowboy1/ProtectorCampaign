@@ -388,26 +388,32 @@ public static class Conversations
         self.events.Add(new Conversation.TextEvent(self, 100, self.Translate("...is this reaching you?"), 0));
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Im busy so get out"), 0));
 
-        Debug("Set up custom conversation replacing Pebbles_White");
+        Debug("PebblesMeetSpear conversation replacing " + self.id);
     }
 
     private static void PebblesMeetInv(SSOracleBehavior.PebblesConversation self)
     {
         //Hehe funny joke Pebbles
         //Probably make him say some "meta" stuff or explain the lore or something funny like that
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Why have you gone through all this pain? You're weird."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Why have you gone through all this pain? You're weird. Hi Inv"), 0));
+
+        Debug("PebblesMeetInv conversation replacing " + self.id);
     }
 
     private static void PebblesDiscussNeuronEarly(SSOracleBehavior.PebblesConversation self)
     {
         //Slag keys? Funny. Why do we have them, though? They seemingly serve no purpose.
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("what on earth is this? Why would I want slag keys?"), 0));
+
+        Debug("PebblesDiscussNeuronEarly conversation replacing " + self.id);
     }
 
     private static void PebblesMeetRed(SSOracleBehavior.PebblesConversation self)
     {
         //Significantly calmer than for Spearmaster
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("hi there I don't like you much but we kinda chill ig"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("hi there I don't like you much but we kinda chill ig. Hi Hunter"), 0));
+
+        Debug("PebblesMeetRed conversation replacing " + self.id);
     }
 
     private static void PebblesDiscussNeuron(SSOracleBehavior.PebblesConversation self)
@@ -416,6 +422,8 @@ public static class Conversations
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("yo sup"), 0));
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("is this ur brain?"), 0));
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("its rly small. Are you stupid?"), 0));
+
+        Debug("PebblesDiscussNeuron conversation replacing " + self.id);
     }
 
     private static void PebblesMeetGourmand(SSOracleBehavior.PebblesConversation self)
@@ -429,8 +437,11 @@ public static class Conversations
             Debug("Opened Outer Expanse gate!");
         } catch (Exception ex) { Error(ex); }
 
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("yo sup"), 0));
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("good day"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("yo sup. lemme unlock OE for you"), 0));
+        self.events.Add(new Conversation.SpecialEvent(self, 0, "unlock"));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("good day, Gourmand"), 0));
+
+        Debug("PebblesMeetGourmand conversation replacing " + self.id);
     }
 
     //INITIAL WAKEUP SEQUENCE
@@ -442,18 +453,15 @@ public static class Conversations
 
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("This is good. At last, you function."), 0)); //alien phrasing - intentional
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I began to consider your body another failed experiment. Fortunately, your awakening interrupted such contemplations,<LINE>and it shall soon put to rest many other bothers."), 0));
-        self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 60));
+        self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 10));
 
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("The child before you has incessantly distracted my attention for several cycles. You are ordered to remove it from my presence and deliver it to a suitable location."), 0));
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I have given my word that the child will not be harmed - a careless mistake of mine.<LINE>As a result, activities such as disposing of the child and neglecting its care are expressly forbidden."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("The child before you has incessantly distracted my attention for several cycles. You are ordered to remove it from my presence and deliver it to a suitable location.<LINE>Under no circumstance is the child to be harmed. Do not neglect its care."), 0));
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("However, I care not where you take the child. I suggest you deliver it to my neighbor, Looks to the Moon. My overseers have instructions to guide you in that direction."), 0));
-        self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 20));
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("...Considering her situation, I doubt that she will refuse to assume ownership of the problem.<LINE>Unlike myself, she is likely incapable of important work."), 0));
-        self.events.Add(new SSOracleBehavior.PebblesConversation.PauseAndWaitForStillEvent(self, self.convBehav, 60));
+        self.events.Add(new Conversation.TextEvent(self, 10, self.Translate("...Considering her situation, I doubt that she will refuse to assume ownership of the problem.<LINE>Unlike myself, she is likely incapable of important work."), 0));
 
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Travel with speed and caution, little servant. Your services, although minute, shall be appreciated.<LINE>In the meantime, I must resume my work."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 20, self.Translate("Travel with speed and caution, little servant. Your services, although minute, shall be greatly appreciated.<LINE>In the meantime, I must resume my ever-pressing work."), 0));
 
-        Debug("Set up custom conversation replacing Pebbles_White");
+        Debug("PebblesMeetWhite conversation replacing " + self.id);
     }
 
     private static void PebblesMeetYellow(SSOracleBehavior.PebblesConversation self)
@@ -461,7 +469,9 @@ public static class Conversations
         //"Why are you back here? I'm not a homeless shelter for slugcats."
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("guess what?"), 0));
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("im not a homeless shelter for slugcats"), 0));
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("get out"), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("get out, Monk"), 0));
+
+        Debug("PebblesMeetYellow conversation replacing " + self.id);
     }
 
     #endregion
@@ -510,7 +520,8 @@ public static class Conversations
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("What is this?"), 0));
         self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("Remarkable! A neuron encoding - how many? Ah - Sixteen slag reset keys!<LINE>Wherever did you find such a thing?"), 0));
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Most of the methods encoded here are rather extreme, even for my circumstances.<LINE>Regardless, I will copy these keys for reference in case of an emergency.<LINE>Actually, I will implement all of these in a backup protocall immediately!"), 0));
-        self.events.Add(new Conversation.TextEvent(self, 80, self.Translate("...Thank you for this, little creature! I never dared to hope for assistance amidst this dire situation, yet a strange animal came to help me.<LINE>Did someone send you? Did you find this somewhere? Ah, I wish I knew! But I greatly appreciate your service nonetheless, little one!<LINE>...although, I deeply hope that your help is not needed. These slag resets would not be ideal."), 20));
+        self.events.Add(new Conversation.TextEvent(self, 80, self.Translate("...Sorry, I did not intend to ignore you."), -10));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("...Thank you for this, little creature! I never dared to hope for assistance amidst this dire situation, yet a strange animal came to help me.<LINE>Did someone send you? Did you find this somewhere? Ah, I wish I knew! But I greatly appreciate your service nonetheless, little one!<LINE>...although, I deeply hope that your help is not needed. These slag resets would not be ideal."), 20));
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I do not know how to repay you for this. I hope that I can help you if you need anything of your own.<LINE>Please, stay here and rest a while. I appreciate the company."), 0));
 
         //switch to slumber party behavior instead of "politely" throwing the player out
@@ -559,10 +570,31 @@ public static class Conversations
     {
         self.events.Add(new AchievementManager.AchievementEvent(self, 0, AchievementManager.GivePearlID)); //give achievement for the pearl immediately
         self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("..."), 0));
-        self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("You Win!"), 0));
+
+        if (self.State.unrecognizedSaveStrings.Contains(MOON_SAVE_KEY_DM_GOT_NEURON)) //got neuron; much more open to helping
+        {
+            self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("...This... ...You want me to help you with this?"), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I am shocked that Five Pebbles would have the nerve to ask that I relieve him of a distraction in a time like this.<LINE>Due to his carelessness, I too have little time to focus on the care of a little creature. But I suppose..."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("I said that I would repay you if I could. I will keep my word. Unlike my neighbor, I will not forsake a poor animal nor a friend in need, even amidst this crisis.<LINE>Little creature, I will do what I can to help your young charge. I will keep the child safe and healthy to the best of my ability."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Both of you may stay here for as long as you like. You are safe here.<LINE>...And I appreciate your company in this dark time."), 10));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Little servant, well done. You did what you set out to do, and perhaps more. All is well."), 20));
+        }
+        else
+        {
+            self.events.Add(new Conversation.TextEvent(self, 40, self.Translate("...This... I... I can't believe this."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("...The pearl is not too old. It was likely written after Five Pebbles cut off all communications with me."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("...I can't believe this. He steals my water supply and then asks me to solve his problems for him?"), 0));
+            self.events.Add(new Conversation.SpecialEvent(self, 0, "panic"));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Pebbles, how could you? You are killing me! You you you..."), 10));
+            self.events.Add(new Conversation.TextEvent(self, 80, self.Translate("My apologies, little one. I experienced a brief malfunction in several of my processors."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 20, self.Translate("...I freely admit that I am not delighted to undertake the care of this child. You could not have arrived at a more inopportune time.<LINE>Yet I will not neglect to help my neighbor, even when he is robbing me of my resources. Nor will I abandon you and your charge.<LINE>I will do what I can to care for the child."), 10));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("You and I are not so different. We both were designed for a single task and left alone to complete it.<LINE>Faithful servant, you have fulfilled your goal. I wish that I could say the same."), 10));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Both of you may stay here for as long as you like. You are safe here.<LINE>...And I appreciate your company in this dark time."), 10));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("...Thank you for reminding me what is important in this life. I needed that reminder.<LINE>Well done, little servant."), 10));
+        }
 
         self.events.Add(new AchievementManager.AchievementEvent(self, 0, AchievementManager.PupAtDMMoon)); //give achievement for the ending last
-        self.events.Add(new FadeOutEvent(self, 10, 80));
+        self.events.Add(new FadeOutEvent(self, 20, 120));
         self.events.Add(new EndGameEvent(self, 10, CustomEnding.SpearmasterMoon));
     }
 
@@ -571,7 +603,7 @@ public static class Conversations
         self.PearlIntro();
 
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("..."), 0));
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("This pearl... is addressed as a message to me?<LINE>The message is freshly written, but it doesn't make sense in this situation."), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("This pearl... is addressed as a message to me?<LINE>The message seems freshly written, but it doesn't make sense in this situation."), 0));
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("It mentions two creatures, a messenger and a child. Are you the messenger or the child? Or did you find this somewhere?<LINE>I sincerely hope that you are not the messenger mentioned here, because that would mean you lost the little one entrusted to you."), 20));
         if (self.myBehavior.oracle.ID != MoreSlugcatsEnums.OracleID.DM)
             self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Regardless, I clearly cannot do what this pearl requests."), 0));
@@ -588,7 +620,7 @@ public static class Conversations
 
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("..."), 0));
         if (self.myBehavior.oracle.ID == MoreSlugcatsEnums.OracleID.DM)
-            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Ah, this pearl again."), 0));
+            self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Ah, this strange pearl again."), 0));
         else
             self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Ah, this pearl again.<LINE>Little creature, you know that I cannot assist you in caring for the child."), 0));
         self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Would you like me to read the contents of the pearl to you?"), 0));
@@ -601,7 +633,15 @@ public static class Conversations
     private static void MoonReadStomachPearl(SLOracleBehaviorHasMark.MoonConversation self)
     {
         //read the pearl
-        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("Let's see... \"PEARL CONTENTS GO HERE\""), 0));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate(
+            "Let's see... \"Due to a careless mistake on my part, I am in an unusual predicament. I promised to ensure the well-being<LINE>" +
+            "of an animal child that was left within my structure. After some cycles, it became impossible to maintain my usual work<LINE>" +
+            "whilst also caring for an animal. Unable to dispose of the creature, I instead remembered your ever-willingness to help<LINE>" +
+            "me and resolved to transfer the care of the little animal to you. I have engineered a messenger to deliver the child.<LINE>" +
+            "Please kindly receive the party and ensure the well-being of the child until it is reunited with its biological family.<LINE>" +
+            "   - Five Pebbles\""
+            ), 40));
+        self.events.Add(new Conversation.TextEvent(self, 0, self.Translate("...The message appears hastily and carelessly written. Five Pebbles ought to be ashamed of himself."), 0));
     }
 
     private static void MoonSecondEncounterAfterPearl(SLOracleBehaviorHasMark.MoonConversation self)

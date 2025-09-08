@@ -144,8 +144,8 @@ public static class PupTracker
             var data = behavior.oracle.room.world.game.GetStorySession.saveState.miscWorldSaveData.GetSlugBaseData();
             if (data.TryGet(SAVE_KEY_WARP_CHANCE, out float chance))
             {
-                data.Set(SAVE_KEY_WARP_CHANCE, chance + MEET_MOON_CHANCE_INCREASE);
-                Debug("Gave pearl to Moon. Set warp chance next cycle to " + (chance + MEET_MOON_CHANCE_INCREASE));
+                data.Set(SAVE_KEY_WARP_CHANCE, chance + MEET_MOON_WARP_CHANCE_INCREASE);
+                Debug("Gave pearl to Moon. Set warp chance next cycle to " + (chance + MEET_MOON_WARP_CHANCE_INCREASE));
             }
             else
                 Error("Could not find SAVE_KEY_WARP_CHANCE");
