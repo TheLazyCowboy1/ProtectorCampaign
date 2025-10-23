@@ -11,6 +11,8 @@ using MoreSlugcats;
 using Menu;
 using static ProtectorCampaign.Constants;
 using RWCustom;
+using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 
 #pragma warning disable CS0618
 
@@ -27,7 +29,7 @@ public partial class Plugin : BaseUnityPlugin
 {
     public const string MOD_ID = "LazyCowboy.ProtectorCampaign",
         MOD_NAME = "Protector Campaign",
-        MOD_VERSION = "0.0.1";
+        MOD_VERSION = "0.0.3";
 
     //TODO: stuff
 
@@ -69,6 +71,9 @@ public partial class Plugin : BaseUnityPlugin
             On.Menu.KarmaLadder.AddEndgameMeters += KarmaLadder_AddEndgameMeters;
             On.Player.ctor -= Player_ctor;
             BackpackSlugpupHook?.Undo();
+            On.Player.Die -= Player_Die;
+            On.Player.Grabbed -= Player_Grabbed;
+            On.Player.Update -= Player_Update;
 
             On.PlayerGraphics.InitiateSprites -= PlayerGraphics_InitiateSprites;
             On.PlayerGraphics.DrawSprites -= PlayerGraphics_DrawSprites;
@@ -77,7 +82,7 @@ public partial class Plugin : BaseUnityPlugin
 
             //On.Watcher.WarpPoint.WarpPointData.ctor -= WarpPointData_ctor;
             //On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues -= WorldLoader_ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues;
-            On.Room.TrySpawnWarpPoint -= Room_TrySpawnWarpPoint;
+            On.Room.TrySpawnWarpPoint_PlacedObject_bool -= Room_TrySpawnWarpPoint;
             WarpFatigueHook?.Undo();
             //OverworldTimelineHook?.Undo();
             //On.Watcher.WarpPoint.PerformWarp -= PupTracker.WarpPoint_PerformWarp;
@@ -91,6 +96,8 @@ public partial class Plugin : BaseUnityPlugin
             On.Room.Loaded -= WorldChanges.Room_Loaded;
             On.Player.SlugcatGrab -= WorldChanges.Player_SlugcatGrab;
             On.RegionGate.customOEGateRequirements -= WorldChanges.RegionGate_customOEGateRequirements;
+            On.HUD.Map.Update -= WorldChanges.Map_Update;
+            PlayingAsSlugcatHook?.Undo();
 
             //On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues -= Conversations.WorldLoader_ctor;
             On.SSOracleBehavior.PebblesConversation.AddEvents -= Conversations.PebblesConversation_AddEvents;
@@ -104,6 +111,7 @@ public partial class Plugin : BaseUnityPlugin
             On.Player.NPCStats.ctor -= PupTracker.NPCStats_ctor;
             On.ShelterDoor.DoorClosed -= PupTracker.ShelterDoor_DoorClosed;
             On.Player.Update -= PupTracker.Player_Update;
+            On.Player.DeathByBiteMultiplier -= PupTracker.Player_DeathByBiteMultiplier;
 
             On.OverseersWorldAI.DirectionFinder.StoryRegionPrioritys -= OverseerChanges.DirectionFinder_StoryRegionPrioritys;
             On.OverseersWorldAI.DirectionFinder.StoryRoomInRegion -= OverseerChanges.DirectionFinder_StoryRoomInRegion;
@@ -116,6 +124,7 @@ public partial class Plugin : BaseUnityPlugin
     private Hook BackpackSlugpupHook;
     private Hook WarpFatigueHook;
     //private Hook OverworldTimelineHook;
+    private Hook PlayingAsSlugcatHook;
 
     private bool IsInit;
     private void RainWorldOnOnModsInit(On.RainWorld.orig_OnModsInit orig, RainWorld self)
@@ -136,6 +145,9 @@ public partial class Plugin : BaseUnityPlugin
                 BackpackSlugpupHook = new(typeof(Player).GetProperty(nameof(Player.CanPutSlugToBack)).GetGetMethod(),
                     Player_CanPutSlugToBack);
             } catch (Exception ex) { Logger.LogError(ex); }
+            On.Player.Die += Player_Die;
+            On.Player.Grabbed += Player_Grabbed;
+            On.Player.Update += Player_Update;
 
             //Appearance
             On.PlayerGraphics.InitiateSprites += PlayerGraphics_InitiateSprites;
@@ -144,7 +156,8 @@ public partial class Plugin : BaseUnityPlugin
             On.PlayerGraphics.DefaultFaceSprite_float_int += PlayerGraphics_DefaultFaceSprite_float_int;
 
             //Warps
-            On.Room.TrySpawnWarpPoint += Room_TrySpawnWarpPoint;
+            //On.Room.TrySpawnWarpPoint += Room_TrySpawnWarpPoint;
+            On.Room.TrySpawnWarpPoint_PlacedObject_bool += Room_TrySpawnWarpPoint;
             try {
                 WarpFatigueHook = new(typeof(StoryGameSession).GetProperty(nameof(StoryGameSession.warpTraversalsLeftUntilFullWarpFatigue)).GetGetMethod(),
                     StoryGameSession_WarpTraversalsLeftUntilFullWarpFatigue);
@@ -163,6 +176,10 @@ public partial class Plugin : BaseUnityPlugin
             On.Room.Loaded += WorldChanges.Room_Loaded;
             On.Player.SlugcatGrab += WorldChanges.Player_SlugcatGrab;
             On.RegionGate.customOEGateRequirements += WorldChanges.RegionGate_customOEGateRequirements;
+            On.HUD.Map.Update += WorldChanges.Map_Update;
+            try {
+                PlayingAsSlugcatHook = new(typeof(PlayerProgression).GetProperty(nameof(PlayerProgression.PlayingAsSlugcat)).GetGetMethod(), WorldChanges.PlayerProgression_PlayingAsSlugcat);
+            } catch (Exception ex) { Logger.LogError(ex); }
 
             //conversations
             //On.WorldLoader.ctor_RainWorldGame_Name_Timeline_bool_string_Region_SetupValues += Conversations.WorldLoader_ctor;
@@ -179,6 +196,7 @@ public partial class Plugin : BaseUnityPlugin
             On.Player.NPCStats.ctor += PupTracker.NPCStats_ctor;
             On.ShelterDoor.DoorClosed += PupTracker.ShelterDoor_DoorClosed;
             On.Player.Update += PupTracker.Player_Update;
+            On.Player.DeathByBiteMultiplier += PupTracker.Player_DeathByBiteMultiplier;
 
             //overseer hooks
             On.OverseersWorldAI.DirectionFinder.StoryRegionPrioritys += OverseerChanges.DirectionFinder_StoryRegionPrioritys;
@@ -192,13 +210,7 @@ public partial class Plugin : BaseUnityPlugin
             ProtectorName = new("LZC_Protector");
 
             //register fake passage icons for displaying health
-            try
-            {
-                //FSprite fSprite = new("Kill_Slugcat", true);
-                var element = Futile.atlasManager.GetElementWithName("Kill_Slugcat");
-                Futile.atlasManager._allElementsByName.Add(Protector_Health_String + "A", element);
-                Futile.atlasManager._allElementsByName.Add(Protector_Health_String + "B", element);
-            } catch (Exception ex) { Logger.LogError(ex); }
+            TryRegisterHealthSprites();
 
             Conversations.RegisterConversations();
             MachineConnector.SetRegisteredOI(MOD_ID, Options);
@@ -256,6 +268,12 @@ public partial class Plugin : BaseUnityPlugin
 
     private void RainWorldGame_ctor(On.RainWorldGame.orig_ctor orig, RainWorldGame self, ProcessManager manager)
     {
+        //Clear misc tables and vars
+        try
+        {
+            PlayerInfos.Clear();
+        } catch (Exception ex) { Logger.LogError(ex); }
+
         try
         {
             //detect whether it's a protector campaign
@@ -276,6 +294,8 @@ public partial class Plugin : BaseUnityPlugin
             if (IsProtectorCampaign)
             {
                 PupTracker.CycleStarted(self);
+
+                //ModManager.CoopAvailable = true; //fixes permaDeaths not being triggered properly
             }
         }
         catch (Exception ex) { Logger.LogError(ex); IsProtectorCampaign = false; }
@@ -285,6 +305,7 @@ public partial class Plugin : BaseUnityPlugin
     //Set player stats
     //Spawn slugpup
     //Give stomach pearl
+    //enable back-spear
     private void Player_ctor(On.Player.orig_ctor orig, Player self, AbstractCreature abstractCreature, World world)
     {
         orig(self, abstractCreature, world);
@@ -294,6 +315,9 @@ public partial class Plugin : BaseUnityPlugin
             if (self.slugcatStats.name == ProtectorName)
             {
                 SetPlayerStats(self);
+
+                //enable back-spear
+                self.spearOnBack ??= new(self);
             }
             if (IsProtectorCampaign && self.playerState.playerNumber == 0 && world.game.Players[0] == abstractCreature && world.game.IsStorySession)
             {
@@ -320,6 +344,24 @@ public partial class Plugin : BaseUnityPlugin
 
     #region PlayerStats
 
+    private bool healthSpritesRegistered = false;
+    private void TryRegisterHealthSprites()
+    {
+        if (healthSpritesRegistered) return;
+        try
+        {
+            //FSprite fSprite = new("Kill_Slugcat", true);
+            var element = Futile.atlasManager.GetElementWithName("Kill_Slugcat");
+            if (element != null)
+            {
+                Futile.atlasManager._allElementsByName.Add(Protector_Health_String + "A", element);
+                Futile.atlasManager._allElementsByName.Add(Protector_Health_String + "B", element);
+                healthSpritesRegistered = true;
+            }
+        }
+        catch (Exception ex) { Logger.LogError(ex); }
+    }
+    
     //vars used for UI display in sleep screen
     private int lastHealth = 0, lastDeltaHealth = 0;
     //Set food always to 0
@@ -359,6 +401,8 @@ public partial class Plugin : BaseUnityPlugin
         {
             if (IsProtectorCampaign)
             {
+                TryRegisterHealthSprites();
+
                 var menu = self.menu as KarmaLadderScreen;
                 var tracker = new WinState.IntegerTracker(new(Protector_Health_String, false), 0, MIN_HEALTH - 1, MIN_HEALTH, MAX_HEALTH + 1);
                 tracker.lastShownProgress = self.playerDeath ? lastHealth + lastDeltaHealth : lastHealth; //don't show progress if already dead
@@ -369,6 +413,14 @@ public partial class Plugin : BaseUnityPlugin
 
         orig(self);
     }
+
+    private struct PlayerInfo
+    {
+        public float shockChance;
+        public float shockQueued;
+    }
+    //private ConditionalWeakTable<Player, PlayerInfo> PlayerInfos = new();
+    private Dictionary<int, PlayerInfo> PlayerInfos = new(4);
 
     private void SetPlayerStats(Player self)
     {
@@ -387,6 +439,18 @@ public partial class Plugin : BaseUnityPlugin
         self.slugcatStats.poleClimbSpeedFac += h * 0.01f;
         self.slugcatStats.swimForceFac += h * 0.01f;
 
+        if (!PlayerInfos.ContainsKey(self.playerState.playerNumber))
+        {
+            int w = 0;
+            if (self.room.game.IsStorySession && self.room.game.GetStorySession.saveState.miscWorldSaveData.GetSlugBaseData().TryGet(SAVE_KEY_WARPS_SPAWNED, out int savedWarps))
+                w = savedWarps;
+
+            PlayerInfos.Add(self.playerState.playerNumber, new() {
+                shockChance = BASE_SHOCK_CHANCE + h * SHOCK_CHANCE_PER_HEALTH + w * SHOCK_CHANCE_PER_WARP,
+                shockQueued = 0
+            });
+        }
+
         Logger.LogDebug($"Set player stats. throwing: {self.slugcatStats.throwingSkill}. weight: {self.slugcatStats.bodyWeightFac}. run: {self.slugcatStats.runspeedFac}. corridor: {self.slugcatStats.corridorClimbSpeedFac}. pole: {self.slugcatStats.poleClimbSpeedFac}. swim: {self.slugcatStats.swimForceFac}");
     }
 
@@ -395,6 +459,104 @@ public partial class Plugin : BaseUnityPlugin
     {
         if (self.SlugCatClass == ProtectorName) return false;
         return orig(self);
+    }
+
+
+    private void Player_Die(On.Player.orig_Die orig, Player self)
+    {
+        try
+        {
+            //exclude permaDeaths; we shouldn't block against those (getting pulled in den or falling down pit)
+            if (self.SlugCatClass == ProtectorName && !self.playerState.permaDead
+                && PlayerInfos.TryGetValue(self.playerState.playerNumber, out var info)
+                && UnityEngine.Random.value < info.shockChance)
+            {
+                Logger.LogDebug("Preventing player death. shock chance: " + info.shockChance);
+
+                info.shockChance -= DEATH_BLOCK_WEIGHT;
+                info.shockQueued = DEATH_BLOCK_WEIGHT;
+                PlayerInfos[self.playerState.playerNumber] = info;
+
+                //PlayerReleaseShock(self, DEATH_BLOCK_WEIGHT);
+
+                return; //don't die
+            }
+        } catch (Exception ex) { Logger.LogError(ex); }
+
+        orig(self);
+    }
+
+    private void Player_Grabbed(On.Player.orig_Grabbed orig, Player self, Creature.Grasp grasp)
+    {
+        orig(self, grasp);
+
+        try
+        {
+            //don't shock other players
+            if (self.SlugCatClass == ProtectorName && grasp.grabber != null && grasp.grabber is not Player
+                && PlayerInfos.TryGetValue(self.playerState.playerNumber, out var info)
+                && UnityEngine.Random.value < info.shockChance)
+            {
+                Logger.LogDebug("Preventing player grabbed. shock chance: " + info.shockChance);
+
+                float strength = grasp.grabber.TotalMass / self.TotalMass * CREATURE_SHOCK_WEIGHT;
+                info.shockChance -= strength;
+                info.shockQueued = strength;
+                PlayerInfos[self.playerState.playerNumber] = info;
+
+                //grasp.grabber.Stun(120);
+                //self.room.AddObject(new CreatureSpasmer(grasp.grabber, false, grasp.grabber.stun));
+                //grasp.grabber.LoseAllGrasps(); //drop him!
+                //self.dangerGrasp = null; //make sure this thing doesn't stick around too long
+
+                //PlayerReleaseShock(self, strength);
+            }
+        }
+        catch (Exception ex) { Logger.LogError(ex); }
+    }
+
+    //Release the queued shock
+    private void Player_Update(On.Player.orig_Update orig, Player self, bool eu)
+    {
+        try
+        {
+            if (PlayerInfos.TryGetValue(self.playerState.playerNumber, out PlayerInfo info) && info.shockQueued > 0)
+            {
+                Creature.Grasp[] tempList = self.grabbedBy.ToArray();
+                foreach (var g in tempList)
+                {
+                    g.grabber.Stun(120);
+                    self.room.AddObject(new CreatureSpasmer(g.grabber, false, g.grabber.stun));
+                    g.grabber.LoseAllGrasps();
+                }
+                PlayerReleaseShock(self, info.shockQueued);
+
+                info.shockQueued = 0;
+                PlayerInfos[self.playerState.playerNumber] = info;
+            }
+        }
+        catch (Exception ex) { Logger.LogError(ex); }
+
+        orig(self, eu);
+    }
+
+    //mostly cosmetic shock results
+    private void PlayerReleaseShock(Player self, float strength)
+    {
+        Logger.LogDebug("Player releasing shock. Strength = " + strength);
+
+        self.room.PlaySound(SoundID.Centipede_Shock, self.mainBodyChunk, false, 0.25f * strength, 1f);
+
+        self.AddMud(Mathf.CeilToInt(200 * strength), 400, new(0.5f, 0.5f, 1)); //add light-blue mud to player for up to 10 seconds
+
+        //add sparks
+        for (int i = 0; i < 10; i++)
+            self.room.AddObject(new Spark(self.mainBodyChunk.pos, Custom.RNV() * 15, new(0.5f, 0.5f, 1), null, 16, 28));
+
+        //add centipede underwater shock effect, which does deal some damage
+        self.room.AddObject(new UnderwaterShock(self.room, self, self.mainBodyChunk.pos,
+            Mathf.CeilToInt(20 * strength), 100 * strength, Mathf.Max(0.1f * strength, 0.7f),
+            self, new(0.7f, 0.7f, 1)));
     }
 
     #endregion
@@ -461,7 +623,7 @@ public partial class Plugin : BaseUnityPlugin
 
     public static bool SlugpupWarp = false;
     //Makes it possible for warps to actually spawn
-    private WarpPoint Room_TrySpawnWarpPoint(On.Room.orig_TrySpawnWarpPoint orig, Room self, PlacedObject po, bool saveInRegionState, bool skipIfInRegionState, bool deathPersistent)
+    private WarpPoint Room_TrySpawnWarpPoint(On.Room.orig_TrySpawnWarpPoint_PlacedObject_bool orig, Room self, PlacedObject po, bool saveInRegionState)
     {
         try
         {
@@ -478,7 +640,7 @@ public partial class Plugin : BaseUnityPlugin
                     Logger.LogDebug("Made warp one-way");
                 }
 
-                var wp = orig(self, po, saveInRegionState, skipIfInRegionState, deathPersistent);
+                var wp = orig(self, po, saveInRegionState);
 
                 if (wp != null)
                 {
@@ -493,7 +655,7 @@ public partial class Plugin : BaseUnityPlugin
             }
         }
         catch (Exception ex) { Logger.LogError(ex); }
-        return orig(self, po, saveInRegionState, skipIfInRegionState, deathPersistent);
+        return orig(self, po, saveInRegionState);
     }
 
     //disable warp fatigue; it's annoying while testing

@@ -269,7 +269,7 @@ public static class PupTracker
 
             bool inThrone = self.room?.world?.name?.ToUpperInvariant() == "WORA" //Outer Rim
                 && THRONE_WARP_ROOMS.Contains(self.room.abstractRoom.name.ToUpperInvariant()) //Throne warp room
-                && self.IsBlacklistedRoomFromDynamicWarpPoints(self.room) == Player.BlackListReason.None; //Can warp
+                && self.IsBlacklistedRoomFromDynamicWarpPoints(self.room, false) == Player.BlackListReason.None; //Can warp
 
             if (WarpChance <= 0 && !inThrone)
                 return;
@@ -289,7 +289,7 @@ public static class PupTracker
 
             if (UnityEngine.Random.value < currentChance
                 && self.room.warpPoints.Count <= 0
-                && self.IsBlacklistedRoomFromDynamicWarpPoints(self.room) == Player.BlackListReason.None) //don't fail spawning a warp; it pops up a message
+                && self.IsBlacklistedRoomFromDynamicWarpPoints(self.room, false) == Player.BlackListReason.None) //don't fail spawning a warp; it pops up a message
             {
                 //spawn a warp!
                 Debug("Trying to spawn a warp!!! Chance of occurring this second: " + currentChance + ". In Throne: " + inThrone);
@@ -326,6 +326,15 @@ public static class PupTracker
         }
         catch (Exception ex) { Error(ex); }
     }
+
+    //Reduce pup deathByBite chance
+    public static float Player_DeathByBiteMultiplier(On.Player.orig_DeathByBiteMultiplier orig, Player self)
+    {
+        if (Slugpup?.ID != null && self?.abstractPhysicalObject?.ID == Slugpup.ID)
+            return 0;
+        return orig(self);
+    }
+
 
     //Set warp chance to 0 for every warp taken
     //public static void WarpPoint_PerformWarp(On.Watcher.WarpPoint.orig_PerformWarp orig, WarpPoint self)

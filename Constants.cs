@@ -14,6 +14,12 @@ public static class Constants
     public const int FOOD_GOAL = 6;
     public const int STARVE_PENALTY = -10;
 
+    public const float BASE_SHOCK_CHANCE = 1; //100%
+    public const float SHOCK_CHANCE_PER_HEALTH = 0.05f; //30 * 0.05 = 1.5f = 150%
+    public const float SHOCK_CHANCE_PER_WARP = 1; //chance goes up by 100% each time we warp
+    public const float DEATH_BLOCK_WEIGHT = 1; //subtracts 100% from the shock chance
+    public const float CREATURE_SHOCK_WEIGHT = 0.3f;
+
     private const float MAX_CYCLES_BEFORE_WARP = 40; //it takes 40 cycles for chance to go from 0 to 1
     public const float STARTING_WARP_CHANCE = -10f / MAX_CYCLES_BEFORE_WARP; //10 cycles before warp is possible
     public const float POST_WARP_CHANCE = -5f / MAX_CYCLES_BEFORE_WARP; //5 cycles after a warp before it's possible again

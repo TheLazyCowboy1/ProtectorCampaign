@@ -1,12 +1,12 @@
 {
     "id": "LazyCowboy.ProtectorCampaign",
-    "name": "ProtectorCampaign",
-    "version": "0.0.1",
-    "target_game_version": "v1.10",
-    "authors": ", TheLazyCowboy1",
-    "description": "THIS IS AN ALPHA VERSION. EVEN THE NAME IS 100% A PLACEHOLDER. THE FINISHED PROJECT WILL BE UPLOADED SEPARATELY. PLEASE ONLY PLAY THIS IF YOU DO SO WITH THE INTENTION OF GIVING FEEDBACK, OR IF YOU JUST LOVE BUGGY MODS FOR SOME WEIRD REASON. Hey, playtesting is way more helpful than you'd think, so I appreciate help if you want to give it. But you have been warned this is far from a finished product.<LINE>I suspect this mod will feel unreasonably difficult in its current state. I will brainstorm powerup ideas for the slugcat.<LINE><LINE>Description:<LINE>A severely over-ambitious campaign that combines the age-old goal of delivering a slugpup to a safe home with the Watcher's time-travel/teleportation and Downpour's diverse timelines.<LINE><LINE>Credits:<LINE>Benoit3607 - Original concept, ideas and suggestions<LINE>TheLazyCowboy1 - The boring parts of the code<LINE>The Watcher devs - the other half of the code (like seriously, they already implemented half these mechanics; I just had to bug-fix them)<LINE>Your name could go here... This mod would especially benefit from artwork, but I could not draw to save my life.",
-    "requirements": [ "slime-cubed.slugbase", "watcher", "moreslugcats", "ddemile.fake_achievements", "warpicons.elsafogen" ],
-    "requirements_names": [ "SlugBase", "The Watcher", "More Slugcats Expansion", "Fake Achievements", "Warp icons for vanilla and Downpour regions" ],
+    "name": "(ALPHA) ProtectorCampaign",
+    "version": "0.0.3",
+    "target_game_version": "v1.11",
+    "authors": "TheLazyCowboy1",
+    "description": "THIS IS AN ALPHA VERSION. EVEN THE NAME IS 100% A PLACEHOLDER. THE FINISHED PROJECT WILL BE UPLOADED SEPARATELY. PLEASE ONLY PLAY THIS IF YOU DO SO WITH THE INTENTION OF GIVING FEEDBACK, OR IF YOU JUST LOVE BUGGY MODS FOR SOME WEIRD REASON. Hey, playtesting is way more helpful than you'd think, so I appreciate help if you want to give it. But you have been warned this is far from a finished product.<LINE>I suspect this mod will feel unreasonably difficult in its current state. I will brainstorm powerup ideas for the slugcat.<LINE><LINE>Description:<LINE>A severely over-ambitious campaign that combines the age-old goal of delivering a slugpup to a safe home with the Watcher's time-travel/teleportation and Downpour's diverse timelines.<LINE><LINE>Jolly Co-op is required because I'm too lazy to manually patch all those methods.<LINE><LINE>Credits:<LINE>DJ Soundbreaker - Original concept, ideas and suggestions<LINE>TheLazyCowboy1 - The boring parts of the code<LINE>The Watcher devs - the other half of the code (like seriously, they already implemented half these mechanics; I just had to bug-fix them)<LINE>Your name could go here... This mod would especially benefit from artwork, but I could not draw to save my life.",
+    "requirements": [ "slime-cubed.slugbase", "watcher", "moreslugcats", "ddemile.fake_achievements", "warpicons.elsafogen", "jollycoop" ],
+    "requirements_names": [ "SlugBase", "The Watcher", "More Slugcats Expansion", "Fake Achievements", "Warp icons for vanilla and Downpour regions", "Jolly Co-op" ],
     "tags": [ "Campaigns", "Custom Slugcat", "Downpour", "Watcher" ],
     "checksum_override_version": false
 }

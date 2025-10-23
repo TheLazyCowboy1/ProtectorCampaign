@@ -1,4 +1,5 @@
-﻿using MoreSlugcats;
+﻿using BepInEx.Logging;
+using MoreSlugcats;
 using SlugBase.SaveData;
 using System;
 using System.Collections.Generic;
@@ -101,6 +102,28 @@ public static class WorldChanges
                 return true; //save key says it's open; good enough for me!
         } catch (Exception ex) { Error(ex); }
         return false;
+    }
+
+
+    //Fix map to align with timeline
+    public static void Map_Update(On.HUD.Map.orig_Update orig, HUD.Map self)
+    {
+        try
+        {
+            if (!self.mapLoaded && Plugin.IsProtectorCampaign && self.hud.rainWorld.progression.currentSaveState != null)
+                SlugcatOverride = Plugin.TimelineToSlugcat(self.hud.rainWorld.progression.currentSaveState.currentTimelinePosition);
+        } catch (Exception ex) { Error(ex); }
+
+        orig(self);
+
+        SlugcatOverride = null; //don't let the override be kept...
+    }
+
+    //Used to override briefly the current slugcat name
+    private static SlugcatStats.Name SlugcatOverride = null;
+    public static SlugcatStats.Name PlayerProgression_PlayingAsSlugcat(Func<PlayerProgression, SlugcatStats.Name> orig, PlayerProgression self)
+    {
+        return (SlugcatOverride == null) ? orig(self) : SlugcatOverride;
     }
 
 
